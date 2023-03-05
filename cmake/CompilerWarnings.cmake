@@ -63,7 +63,7 @@ function(set_project_warnings project_name)
   )
 
   if (WARNINGS_AS_ERRORS)
-    set(CLANG_WARNINGS ${CLANG_WARNINGS} -Werror)
+    set(CLANG_WARNINGS ${CLANG_WARNINGS} -Werror -Wno-error=attributes)
     set(MSVC_WARNINGS ${MSVC_WARNINGS} /WX)
   endif()
 
@@ -76,6 +76,7 @@ function(set_project_warnings project_name)
       -Wlogical-op # warn about logical operations being used where bitwise were
                    # probably wanted
       -Wuseless-cast # warn if you perform a cast to the same type
+      -fdiagnostics-color=auto
   )
 
   if(MSVC)
