@@ -16,18 +16,51 @@ struct env {
 private:
     std::string_view var_name;
     std::optional<std::string_view> val;
+    bool fetched = false;
+
+    auto name_c()
+    -> std::pair<const char *, std::string>
+    {
+        if (!var_name.empty() && var_name.back() == '\0') {
+            return { var_name.data(), {} };
+        }
+
+        auto result = std::pair{
+            static_cast<const char *>(nullptr),
+            std::string(var_name),
+        };
+
+        result.first = result.second.c_str();
+        return result;
+    }
 
 public:
-    constexpr env(std::string_view name_) noexcept :
+    constexpr explicit env(std::string_view name_) noexcept :
         var_name(name_),
-        val{std::nullopt}
-    {}
+        val{std::nullopt},
+        fetched(false)
+    {
+        if (!std::is_constant_evaluated()) {
+            init();
+        }
+    }
+
+    constexpr void init()
+    {
+        if (fetched && !val.has_value()) {
+            val = std::getenv(name_c().first);
+        }
+        fetched = true;
+    }
 
     template <vb::parse::parseable TYPE>
-    constexpr auto value(TYPE default_ = {}) const
+    auto value_or(TYPE default_ = {}) const
+    -> TYPE
     {
         if (!val.has_value()) {
-            return default_;
+            auto copy = *this;
+            copy.init();
+            return copy.value_or(default_);
         }
         return vb::parse::from_string<TYPE>(val.value());
     }
