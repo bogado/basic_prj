@@ -14,16 +14,12 @@ inline namespace constexpr_str {
 // NOLINTBEGIN modernize-avoid-c-arrays
 template<size_t N>
 struct static_string {
-    consteval static_string(const char (&str)[N])
+
+    consteval explicit static_string(const char (&str)[N]) // NOLINT(noExplicitConstructor)
     : value{}
     {
         std::copy_n(str, N, std::begin(value));
     }
-
-    template <std::same_as<char> ... ARG_Ts>
-    consteval static_string(ARG_Ts... args)
-    : value(args...)
-    {}
 
     constexpr operator std::string_view() const {
         return std::string_view(value.data(), size());
@@ -35,9 +31,6 @@ struct static_string {
 
     std::array<char, N> value;
 };
-
-template <std::same_as<char> ... ARGs>
-static_string(ARGs...) -> static_string<sizeof...(ARGs)>;
 
 template <char ... DATA>
 consteval auto operator""_str() {
@@ -76,7 +69,7 @@ namespace test
 {
     using namespace std::literals;
 
-    static constexpr auto splited_test = splited<"test,a,b,c">;
+    static constexpr auto splited_test = "test,a,b,c"_str;
     static constexpr auto first = splited_test[0];
 
     static_assert(std::same_as<decltype(first), const std::string_view>);
