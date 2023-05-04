@@ -1,6 +1,6 @@
-cmake_minimum_required(version 3.15)
+cmake_minimum_required(VERSION 3.15)
 
-project(___project___ languages cxx version 0.1)
+project(___project___ LANGUAGES CXX VERSION 0.1)
 
 enable_testing()
 
