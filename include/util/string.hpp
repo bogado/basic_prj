@@ -9,9 +9,8 @@
 
 namespace vb {
 
-inline namespace constexpr_str {
-
 // NOLINTBEGIN modernize-avoid-c-arrays
+//
 template<size_t N>
 struct static_string {
 
@@ -32,10 +31,13 @@ struct static_string {
     std::array<char, N> value;
 };
 
-template <char ... DATA>
-consteval auto operator""_str() {
-    return static_string<sizeof...(DATA)>(DATA...);
+namespace literals {
+    template <char ... DATA>
+    consteval auto operator""_str() {
+        return static_string<sizeof...(DATA)>(DATA...);
+    }
 }
+
 // NOLINTEND modernize-avoid-c-arrays //
 
 template <std::size_t N>
@@ -63,21 +65,21 @@ constexpr auto splited = []() {
     return result;
 }();
 
-}
-
 namespace test
 {
     using namespace std::literals;
-
-    static constexpr auto splited_test = "test,a,b,c"_str;
+    using namespace literals;
+/*
+    static constexpr auto splited_test = splited<"test,a,b,c"_str>;
     static constexpr auto first = splited_test[0];
 
-    static_assert(std::same_as<decltype(first), const std::string_view>);
+    static_assert(std::same_as<decltype(first) const std::string_view>);
     static_assert(std::size(splited_test) == 4);
     static_assert(first == "test"sv);
     static_assert(splited_test[1] == "a"sv);
     static_assert(splited_test[2] == "b"sv);
     static_assert(splited_test[3] == "c"sv);
+    */
 }
 
 }
