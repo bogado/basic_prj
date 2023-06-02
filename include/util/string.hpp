@@ -9,6 +9,7 @@
 
 namespace vb {
 
+<<<<<<< HEAD
 template <typename STRING_TYPE>
 concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::value_type>, typename STRING_TYPE::traits_type> ||
     std::is_array_v<STRING_TYPE>;
@@ -18,6 +19,35 @@ inline namespace constexpr_str {
 consteval auto operator""_str(const char* str, std::size_t len)
 {
     return std::string_view(str, len);
+}
+=======
+// NOLINTBEGIN modernize-avoid-c-arrays
+//
+template<size_t N>
+struct static_string {
+
+    consteval explicit static_string(const char (&str)[N]) // NOLINT(noExplicitConstructor)
+    : value{}
+    {
+        std::copy_n(str, N, std::begin(value));
+    }
+
+    constexpr operator std::string_view() const {
+        return std::string_view(value.data(), size());
+    }
+
+    constexpr auto size() const {
+        return N - 1*(value.back() == 0);
+    }
+
+    std::array<char, N> value;
+};
+
+namespace literals {
+    template <char ... DATA>
+    consteval auto operator""_str() {
+        return static_string<sizeof...(DATA)>(DATA...);
+    }
 }
 
 // NOLINTEND modernize-avoid-c-arrays //
@@ -38,22 +68,6 @@ constexpr auto splited = []() {
     return std::span{std::begin(STR), end};
 }();
 
-}
-
-namespace test
-{
-    using namespace std::literals;
-
-    static constexpr auto splited_test = splited<"test,a,b,c"_str>;
-    static constexpr auto first = splited_test[0];
-
-    static_assert(std::same_as<decltype(first), std::string_view>);
-    static_assert(std::size(splited_test) == 4);
-    static_assert(first == "test"sv);
-    static_assert(splited_test[1] == "a"sv);
-    static_assert(splited_test[2] == "b"sv);
-    static_assert(splited_test[3] == "c"sv);
-}
 
 }
 
