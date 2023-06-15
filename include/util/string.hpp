@@ -9,18 +9,10 @@
 
 namespace vb {
 
-<<<<<<< HEAD
 template <typename STRING_TYPE>
 concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::value_type>, typename STRING_TYPE::traits_type> ||
     std::is_array_v<STRING_TYPE>;
 
-inline namespace constexpr_str {
-
-consteval auto operator""_str(const char* str, std::size_t len)
-{
-    return std::string_view(str, len);
-}
-=======
 // NOLINTBEGIN modernize-avoid-c-arrays
 //
 template<size_t N>

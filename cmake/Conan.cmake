@@ -27,14 +27,9 @@ macro(conan)
     get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
     if (isMultiConfig)
         foreach(TYPE ${CMAKE_CONFIGURATION_TYPES})
-            conan_exec(
-                install ${conan_file} --build missing -s "build_type=${TYPE}" --output-folder ${CMAKE_CURRENT_BINARY_DIR}
-            )
+            conan_exec(install ${conan_file} --build missing -s "build_type=${TYPE}" -of="${CMAKE_CURRENT_BINARY_DIR}")
         endforeach()
     else()
-        conan_exec(
-            install ${conan_file} --build missing -s "build_type=${CMAKE_BUILD_TYPE}" --output-folder ${CMAKE_CURRENT_BINARY_DIR}
-        )
+        conan_exec(install ${conan_file} --build missing -s "build_type=${CMAKE_BUILD_TYPE}" -of="${CMAKE_CURRENT_BINARY_DIR}")
     endif()
-
 endmacro()

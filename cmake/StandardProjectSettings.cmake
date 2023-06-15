@@ -28,4 +28,13 @@ if(ENABLE_IPO)
   endif()
 endif()
 
+option(VERBOSE_ERROR
+    "Enable the compiler to backtrace templates and concept errors much more deeply"
+    OFF)
 
+if(VERBOSE_ERROR)
+    list(APPEND CMAKE_CXX_FLAGS -ftemplate-backtrace-limit=0)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        list(APPEND CMAKE_CXX_FLAGS -fconcepts-diagnostics-depth=10)
+    endif()
+endif()
