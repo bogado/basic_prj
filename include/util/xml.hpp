@@ -1,7 +1,9 @@
 #ifndef XML_HPP_INCLUDED
 #define XML_HPP_INCLUDED
 
-#include "./string.hpp"
+#include "util/string.hpp"
+
+#include <optional>
 
 namespace vb::xml {
 
