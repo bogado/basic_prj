@@ -1,8 +1,11 @@
 #ifndef ARRAYS_HPP_INCLUDED
 #define ARRAYS_HPP_INCLUDED
 
+#include <pthread.h>
 #include <array>
+#include <cstdlib>
 #include <span>
+#include <tuple>
 
 namespace vb {
 
@@ -23,24 +26,26 @@ static_assert(!is_dynamic_span<std::array<char, 3>>);
 template <typename T>
 concept is_static_span = is_span<T> && T::extent != std::dynamic_extent;
 
+
 static_assert(!is_static_span<std::span<char>>);
 static_assert(is_static_span<std::span<char,10>>);
 static_assert(!is_static_span<std::array<char, 3>>);
 
 template <typename T>
-concept is_std_array = requires(T t) {
-    { std::array<typename T::value_type, std::tuple_size_v<T>>{} } -> std::same_as<T>;
+concept is_std_array = requires {
+    requires std::tuple_size<T>::value == std::tuple_size_v<T>;
+
 };
 
 static_assert(is_std_array<std::array<char, 3>>);
 static_assert(is_std_array<std::array<char, 0>>);
 
 template <typename T>
-concept constexpr_sized =
-    std::is_bounded_array_v<std::remove_cvref_t<T>>
-    || is_static_span<T>
-    || is_std_array<T>;
+concept constexpr_sized = std::is_bounded_array_v<std::remove_cvref_t<T>>
+    || requires { requires is_static_span<T>; }
+    || requires { requires is_std_array<T>; };
 
+static_assert(!constexpr_sized<char>);
 static_assert(constexpr_sized<std::array<char, 3>>);
 static_assert(constexpr_sized<std::span<char, 3>>);
 static_assert(!constexpr_sized<std::span<char>>);
@@ -74,8 +79,9 @@ constexpr auto to_array(const ARRAY_LIKE_T array_like) {
 }
 
 template <typename T, typename... OTHERS>
-requires(! constexpr_sized<T> && (std::is_convertible_v<OTHERS, T> && ...))
+requires(std::is_convertible_v<OTHERS, T> && ...)
 constexpr auto array_of(const T value, const OTHERS... others)
+-> std::array<T, sizeof...(OTHERS) + 1>
 {
     return std::array{value, static_cast<T>(others)...};
 }
