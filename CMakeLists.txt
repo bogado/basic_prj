@@ -33,7 +33,6 @@ enable_sanitizers(project_options)
 
 # allow for static analysis options
 include(cmake/StaticAnalyzers.cmake)
-include(cmake/Conan.cmake)
 
 target_include_directories(basic_prj INTERFACE include)
 target_link_libraries(basic_prj INTERFACE project_options)

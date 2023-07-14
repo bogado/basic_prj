@@ -1,6 +1,7 @@
 #ifndef ENVIRONMENT_HPP_INCLUDED
 #define ENVIRONMENT_HPP_INCLUDED
 
+#include <cmath>
 #include <string_view>
 #include <cstdlib>
 #include <array>
@@ -26,7 +27,7 @@ private:
         }
 
         auto result = std::pair{
-            static_cast<const char *>(nullptr),
+            "",
             std::string(var_name),
         };
 
@@ -47,17 +48,33 @@ public:
 
     constexpr void init()
     {
-        if (fetched && !val.has_value()) {
-            val = std::getenv(name_c().first);
+        if (fetched) return;
+        auto data = std::getenv(name_c().first);
+        if (data != nullptr) {
+            val = data;
         }
         fetched = true;
+    }
+
+    template <vb::parse::parseable TYPE>
+    auto value_or(TYPE default_ = {})
+    {
+        if (!fetched) {
+            init();
+        }
+
+        if (!val.has_value() || val->empty()) {
+            return default_;
+        }
+
+        return vb::parse::from_string<TYPE>(val.value());
     }
 
     template <vb::parse::parseable TYPE>
     auto value_or(TYPE default_ = {}) const
     -> TYPE
     {
-        if (!val.has_value()) {
+        if (!fetched) {
             auto copy = *this;
             copy.init();
             return copy.value_or(default_);
