@@ -18,7 +18,7 @@ concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::val
     std::is_array_v<STRING_TYPE>;
 
 // NOLINTBEGIN modernize-avoid-c-arrays
-template <typename VALUE_T, std::size_t LENGTH, typename TRAITS = std::char_traits<VALUE_T>>
+template <typename VALUE_T, typename TRAITS = std::char_traits<VALUE_T>>
 struct basic_static_string {
 	using traits_type      = TRAITS;
 	using value_type       = VALUE_T;
@@ -26,16 +26,22 @@ struct basic_static_string {
 	using string_view_type = std::basic_string_view<value_type, traits_type>;
 	using value_limits     = std::numeric_limits<value_type>;
 
-    static constexpr auto length = LENGTH;
+    const VALUE_T* content;
+    std::size_t length;
 
+    template <std::size_t LENGTH>
 	consteval basic_static_string(const value_type (&s)[LENGTH])
-	    : content()
-    {
-        std::copy(std::begin(s), std::end(s), std::begin(content));
-    }
+	    : content(s)
+        , length(LENGTH)
+    {}
 
-	constexpr operator string_view_type() {
-		return string_view_type{content, size()};
+    consteval basic_static_string(const value_type* s, std::size_t len)
+        : content(s)
+        , length(len)
+    {}
+
+	constexpr operator string_view_type() const {
+		return std::string_view{content, length};
 	}
 
 	constexpr auto size() const { return length; }
@@ -43,15 +49,19 @@ struct basic_static_string {
     constexpr auto operator<=>(const basic_static_string& other) const = default;
     constexpr bool operator==(const basic_static_string& other) const = default;
     constexpr bool operator!=(const basic_static_string& other) const = default;
-
-    value_type content[LENGTH];
 };
 
-template <typename TYPE, std::size_t N>
-basic_static_string(const TYPE(&)[N]) -> basic_static_string<TYPE, N>;
+using static_string = basic_static_string<char>;
 
-template<std::size_t N>
-using static_string = basic_static_string<char, N>;
+namespace literals {
+
+auto consteval operator ""_str(const char* data, std::size_t len)
+{
+    return static_string{data, len};
+}
+
+}
+
 namespace test {
 
 static constexpr auto test = basic_static_string("test");
