@@ -75,6 +75,12 @@ concept is_string = requires {
     typename STRING::value_type;
     typename STRING::traits_type::char_type;
     { std::same_as<typename STRING::traits_type::char_type, typename STRING::value_type> };
+} || requires {
+    std::is_array_v<STRING>;
+    typename std::char_traits<std::remove_all_extents_t<STRING>>;
+} || requires {
+    std::is_pointer_v<STRING>;
+    typename std::char_traits<std::remove_pointer_t<STRING>>;
 };
 
 template <std::size_t N>
