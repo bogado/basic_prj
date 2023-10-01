@@ -78,6 +78,7 @@ function(set_project_warnings project_name)
       -Wuseless-cast # warn if you perform a cast to the same type
       -Wno-ignored-attributes # We can ignore attributes
       -fdiagnostics-color=auto
+      -fconcepts-diagnostics-depth=20
   )
 
   if(MSVC)
