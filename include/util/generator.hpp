@@ -3,63 +3,73 @@
 #define INCLUDED_GENERATOR_HPP
 
 #include <coroutine>
+#include <iterator>
 #include <optional>
+#include <exception>
 
 namespace vb {
 
-template <typename VALUE_TYPE, typename REFERENCE_TYPE> 
+template <typename VALUE_TYPE, typename REFERENCE_TYPE = const VALUE_TYPE&>
 struct generator {
     using value_type = VALUE_TYPE;
     using reference =  REFERENCE_TYPE;
 
-    struct promisse_type;
-    using handle_type = std::coroutine_handle<promisse_type>;
+    struct promise_type;
+    using handle_type = std::coroutine_handle<promise_type>;
 
     handle_type handle;
 
-    struct promisse_type {
+    struct promise_type {
         std::optional<value_type> current;
         std::exception_ptr exception;
 
-        generator get_return_object()
+        generator get_return_object() noexcept
         {
-            return handle_type::from_promise(*this);
+            return generator(handle_type::from_promise(*this));
         }
 
-        std::suspend_always initial_suspend() { return {}; }
-        std::suspend_always   final_suspend() { return {}; }
+        std::suspend_never  initial_suspend() noexcept { return {}; }
+        std::suspend_always   final_suspend() noexcept { return {}; }
 
         template <std::convertible_to<reference> YIELDED_TYPE>
-        std::suspend_always yield_value(YIELDED_TYPE && yielded) 
+        std::suspend_always yield_value(YIELDED_TYPE && yielded) noexcept
         {
             current = std::forward<YIELDED_TYPE>(yielded);
             return {};
         }
+
+        void unhandled_exception() {
+            exception = std::current_exception();
+        }
     };
 
-    const auto& current()
+    auto& current()
     {
-        return handle.promisse().current;
+        return handle.promise().current;
     }
 
-    bool resume() 
+    void resume()
     {
-        if (!current().has_value()) {
-            handle();
-            return true;
+        handle.resume();
+        if (auto thrown = handle.promise().exception; thrown) {
+            std::rethrow_exception(thrown);
         }
-        return false;
     }
 
     value_type next()
     {
-        resume();
-        return std::move(current().value());
+        if (!current().has_value()) {
+            resume();
+        }
+        auto& opt = current();
+        value_type val = opt.value();
+        opt.reset();
+        return val;
     }
 
     explicit operator bool()
     {
-        next();
+        resume();
         return handle.done();
     }
 
@@ -68,9 +78,16 @@ struct generator {
         using reference = reference;
 
         generator *self = nullptr;
-        reference ref{};
+        value_type ref{};
 
-        value_type operator*() const {
+        iterator(generator* s) :
+            self{s},
+            ref{self->current().value_or(value_type{})}
+        {
+            self->next();
+        }
+
+        reference operator*() const {
             return ref;
         }
 
@@ -79,13 +96,17 @@ struct generator {
             return *this;
         }
 
-        bool operator==(const iterator&) const {
-            return self != nullptr && *self;
+        bool operator==(const std::default_sentinel_t&) const {
+            return self == nullptr || *self;
         }
     };
 
     iterator begin() {
         return iterator{this};
+    }
+
+    auto end() {
+        return std::default_sentinel;
     }
 };
 

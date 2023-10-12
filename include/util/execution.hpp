@@ -2,7 +2,7 @@
 #define INCLUDED_EXECUTION_HPP
 
 #include "string.hpp"
-#include "environment.hpp"
+#include "generator.hpp"
 
 #include <unistd.h>
 
@@ -26,29 +26,38 @@ private:
 
     struct buffer_type {
         using storage_type = std::array<char, BUFFER_SIZE>;
-        using iterator = storage_type::const_iterator;
+        using const_iterator = storage_type::const_iterator;
+        using iterator = storage_type::iterator;
     private:
         storage_type data{};
         iterator free_start = data.begin();
         iterator consumed = free_start;
     public:
         std::size_t free() const {
-            return std::distance(free_start, data.cend());
+            return static_cast<std::size_t>(std::distance(const_iterator{free_start}, data.end()));
         }
 
         std::size_t loaded() const {
-            return std::distance(consumed, free_start);
+            return static_cast<std::size_t>(std::distance(consumed, free_start));
         }
 
-        void load(std::invocable<const char *, std::size_t> auto reader_fn) 
+        bool load(std::invocable<char *, std::size_t> auto reader_fn)
         {
-            free_start += reader_fn(data.data() + free_start, free());
+            if (consumed != free_start) {
+                return true;
+            }
+            auto read = reader_fn(&*free_start, free());
+            if (read < 0) {
+                throw std::system_error(std::error_code(errno, std::system_category()));
+            }
+            std::advance(free_start, read);
+            return read > 0;
         }
 
         std::string unload_line() {
-            auto consume_end = std::find(consumed, free_start, "\n");
+            auto consume_end = std::find(consumed, free_start, '\n');
             auto result = std::string(consumed, consume_end);
-            consumed = consume_end;
+            consumed = std::next(consume_end);
             if (consumed == free_start) {
                 free_start = data.begin();
                 consumed = free_start;
@@ -83,9 +92,11 @@ public:
         std::string result;
         while (result.size() == 0 || result.back() != '\n')
         {
-            buffer.load([this](char* data, std::size_t size) {
+            if (!buffer.load([this](char* data, std::size_t size) {
                 return ::read(file_descriptors[0], data, size);
-            });
+            })) {
+                break;
+            }
             result += buffer.unload_line();
         }
         return result;
@@ -116,7 +127,7 @@ public:
     }
 };
 
-generator<std::string_view, std::string> run_file(fs::path file, std::same_as<std::string> auto ... args)
+generator<std::string> run_file(fs::path file, std::same_as<std::string> auto ... args)
 {
     pipe read;
     int pid = ::fork();
@@ -126,19 +137,20 @@ generator<std::string_view, std::string> run_file(fs::path file, std::same_as<st
     }
     if (pid == 0) // child
     {
-        auto arguments = std::array{args...};
         read.redirect_out();
-        ::execv(file.string().c_str(), arguments.data());
+        ::execl(file.string().c_str(), args.c_str()..., nullptr);
     } else
     {
         while(read) {
-            co_yield read();
+            if (auto val = read(); val) {
+                co_yield val.value();
+            } else {
+                throw std::system_error(val.error());
+            }
         }
     }
 
 }
-
-
 
 }
 

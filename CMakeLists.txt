@@ -36,3 +36,5 @@ include(cmake/StaticAnalyzers.cmake)
 
 target_include_directories(basic_prj INTERFACE include)
 target_link_libraries(basic_prj INTERFACE project_options)
+
+add_subdirectory(test)
