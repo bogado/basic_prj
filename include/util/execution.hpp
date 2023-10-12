@@ -11,7 +11,6 @@
 #include <system_error>
 #include <expected>
 #include <cerrno>
-
 #include "generator.hpp"
 
 namespace vb {
