@@ -22,6 +22,7 @@ struct generator {
     struct promise_type {
         std::optional<value_type> current;
         std::exception_ptr exception;
+        bool done = false;
 
         generator get_return_object() noexcept
         {
@@ -29,7 +30,7 @@ struct generator {
         }
 
         std::suspend_never  initial_suspend() noexcept { return {}; }
-        std::suspend_always   final_suspend() noexcept { return {}; }
+        std::suspend_always   final_suspend() noexcept { done = true; return {}; }
 
         template <std::convertible_to<reference> YIELDED_TYPE>
         std::suspend_always yield_value(YIELDED_TYPE && yielded) noexcept

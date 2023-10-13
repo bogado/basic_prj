@@ -1,17 +1,18 @@
 #ifndef INCLUDED_EXECUTION_HPP
 #define INCLUDED_EXECUTION_HPP
 
-#include "string.hpp"
 #include "generator.hpp"
 
 #include <unistd.h>
+#include <sys/wait.h>
 
 #include <array>
 #include <filesystem>
 #include <system_error>
 #include <expected>
 #include <cerrno>
-#include "generator.hpp"
+#include <csignal>
+#include <iterator>
 
 namespace vb {
 static constexpr auto KB = std::size_t{1024};
@@ -19,58 +20,96 @@ static constexpr auto KB = std::size_t{1024};
 namespace fs = std::filesystem;
 
 template <std::size_t BUFFER_SIZE = (4 * KB)>
+struct buffer_type {
+    using storage_type = std::array<char, BUFFER_SIZE>;
+    using const_iterator = storage_type::const_iterator;
+    using iterator = storage_type::iterator;
+private:
+    storage_type data{};
+    iterator free_start = data.begin();
+    iterator consumed = free_start;
+public:
+    bool has_data() const {
+        return consumed != free_start;
+    }
+
+    std::size_t free() const {
+        return static_cast<std::size_t>(std::distance(const_iterator{free_start}, data.end()));
+    }
+
+    std::size_t loaded() const {
+        return static_cast<std::size_t>(std::distance(consumed, free_start));
+    }
+
+    bool load(std::invocable<char *, std::size_t> auto reader_fn)
+    {
+        auto read = reader_fn(&*free_start, free());
+        std::advance(free_start, read);
+        return read >= 0;
+    }
+
+    std::string unload_line() {
+        while(*consumed == '\0' && consumed != free_start)
+        {
+            consumed++;
+        }
+        auto consume_end = std::find(consumed, free_start, '\n');
+        auto result = std::string(consumed, consume_end);
+        if (consume_end != free_start && *consume_end == '\n') {
+            result.append('\n', 1);
+            consume_end++;
+        }
+        consumed = consume_end;
+        if (consumed == free_start) {
+            free_start = data.begin();
+            consumed = free_start;
+        }
+        return result;
+    }
+};
+
+template <std::size_t BUFFER_SIZE = (4 * KB)>
 struct pipe {
+    using buffer_type = vb::buffer_type<BUFFER_SIZE>;
+
 private:
     std::array<int,2> file_descriptors{-1,-1};
+    buffer_type buffer;
 
-    struct buffer_type {
-        using storage_type = std::array<char, BUFFER_SIZE>;
-        using const_iterator = storage_type::const_iterator;
-        using iterator = storage_type::iterator;
-    private:
-        storage_type data{};
-        iterator free_start = data.begin();
-        iterator consumed = free_start;
-    public:
-        std::size_t free() const {
-            return static_cast<std::size_t>(std::distance(const_iterator{free_start}, data.end()));
+    auto buffer_load(char* data, std::size_t size) {
+        auto read_size = ::read(file_descriptors[0], data, size);
+
+        if (closed()) {
+            read_size = 0;
+            return read_size;
         }
-
-        std::size_t loaded() const {
-            return static_cast<std::size_t>(std::distance(consumed, free_start));
-        }
-
-        bool load(std::invocable<char *, std::size_t> auto reader_fn)
+        if (read_size == 0)
         {
-            if (consumed != free_start) {
-                return true;
+            close();
+        } else if (read_size < 0) {
+            if (errno == EINTR || errno == EAGAIN) {
+                read_size = 0;
+                return read_size;
             }
-            auto read = reader_fn(&*free_start, free());
-            if (read < 0) {
-                throw std::system_error(std::error_code(errno, std::system_category()));
-            }
-            std::advance(free_start, read);
-            return read > 0;
+            throw std::system_error(std::error_code(errno, std::system_category()));
         }
-
-        std::string unload_line() {
-            auto consume_end = std::find(consumed, free_start, '\n');
-            auto result = std::string(consumed, consume_end);
-            consumed = std::next(consume_end);
-            if (consumed == free_start) {
-                free_start = data.begin();
-                consumed = free_start;
-            }
-            return result;
-        }
+        return read_size;
     };
 
-    buffer_type buffer;
+    auto buffer_load() {
+        return buffer.load([this](char* data, std::size_t size) { return buffer_load(data, size); });
+    }
 
 public:
     void redirect_out() 
     {
         ::dup2(file_descriptors[1], 1);
+        ::close(file_descriptors[1]);
+        ::close(file_descriptors[0]);
+    }
+
+    void reader() {
+        ::close(file_descriptors[1]);
     }
 
     void close() {
@@ -82,18 +121,21 @@ public:
         }
     }
 
-    explicit operator bool() const {
-        return file_descriptors[0] != -1 and file_descriptors[1] != -1;
+    bool closed() const {
+        return file_descriptors[0] == -1 || file_descriptors[1] == -1;
+    }
+
+    bool has_data() const {
+        return buffer.has_data();
     }
 
     std::expected<std::string, std::error_code> operator()()
     {
         std::string result;
-        while (result.size() == 0 || result.back() != '\n')
+        while (result.size() == 0 && result.back() != '\n')
         {
-            if (!buffer.load([this](char* data, std::size_t size) {
-                return ::read(file_descriptors[0], data, size);
-            })) {
+            if (closed() || (!has_data() && !buffer_load()))
+            {
                 break;
             }
             result += buffer.unload_line();
@@ -126,9 +168,10 @@ public:
     }
 };
 
-generator<std::string> run_file(fs::path file, std::same_as<std::string> auto ... args)
+
+inline generator<std::string> run_file(fs::path file, std::same_as<std::string> auto ... args)
 {
-    pipe read;
+    pipe input;
     int pid = ::fork();
     if (pid == -1) // 
     {
@@ -136,15 +179,25 @@ generator<std::string> run_file(fs::path file, std::same_as<std::string> auto ..
     }
     if (pid == 0) // child
     {
-        read.redirect_out();
+        input.redirect_out();
         ::execl(file.string().c_str(), args.c_str()..., nullptr);
     } else
     {
-        while(read) {
-            if (auto val = read(); val) {
+        static std::atomic<bool> done = false;
+        input.reader();
+
+        signal(SIGCHLD, [](int) {
+            done = true;
+        });
+
+        while(!input.closed()) {
+            if (auto val = input(); val) {
                 co_yield val.value();
             } else {
                 throw std::system_error(val.error());
+            }
+            if(done) {
+                break;
             }
         }
     }
