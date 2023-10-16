@@ -25,11 +25,13 @@ bool test_buffer()
     return true;
 }
 
+using namespace std::literals;
+
 int main()
 {
     try {
         test_buffer();
-        for (auto line : vb::run_file(vb::fs::path("/bin/ls"), std::string("."))) {
+        for (auto line: vb::run_file(vb::fs::path("/bin/ls"sv), "."s, ".."s)) {
             std::cout << "→ " << line << "\n";
         }
     } catch (std::exception& e) {
