@@ -1,15 +1,10 @@
 #ifndef STRING_HPP_INCLUDED
 #define STRING_HPP_INCLUDED
 
-#include <algorithm>
 #include <array>
-#include <cinttypes>
 #include <limits>
-#include <ranges>
-#include <span>
 #include <string>
 #include <string_view>
-#include <variant>
 
 namespace vb {
 
