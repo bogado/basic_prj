@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 
 #include <array>
+#include <atomic>
 #include <filesystem>
 #include <system_error>
 #include <expected>
@@ -53,7 +54,7 @@ public:
         {
             consumed++;
         }
-        auto consume_end = std::find(consumed, free_start, '\n');
+        auto consume_end = std::ranges::find(consumed, free_start, '\n');
         auto result = std::string(consumed, consume_end);
         if (consume_end != free_start && *consume_end == '\n') {
             result.append('\n', 1);
