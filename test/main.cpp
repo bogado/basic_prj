@@ -31,10 +31,12 @@ int main()
 {
     try {
         test_buffer();
-        for (auto line: vb::run_file(vb::fs::path("/bin/ls"sv), "."s, ".."s)) {
+        auto handler = vb::execution(vb::fs::path("/bin/find"sv), "."s, "-name"s, "*.hpp"s);
+        for (auto line : handler.stdout_lines()) {
             std::cout << "→ " << line << "\n";
         }
+        std::cout << "Exit: " <<  handler.exit_stat().get() << "\n";
     } catch (std::exception& e) {
-        std::cerr << "Caught : " << e.what() <<"\n";
+        std::cerr << "Caught exception : " << e.what() <<"\n";
     }
 }

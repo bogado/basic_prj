@@ -84,7 +84,6 @@ using static_string_list = std::array<std::string_view, N>;
 template <static_string STR>
 static constexpr auto static_view = std::basic_string_view<typename decltype(STR)::value_type, typename decltype(STR)::traits_type>{STR};
 
-
 }  // namespace vb
 
 #endif
