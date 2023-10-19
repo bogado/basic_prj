@@ -25,7 +25,7 @@ static constexpr auto PAGE_SIZE = 4 * KB;
 template <typename... ARGS, typename INVOCABLE>
 requires std::invocable<INVOCABLE, ARGS...>
 constexpr auto throw_on_error(INVOCABLE invocable) {
-    return [=](ARGS&&... args, std::source_location source = std::source_location::current()) {
+    return [=](ARGS... args, std::source_location source = std::source_location::current()) {
         auto error = [=](auto err) { 
             auto code = std::error_code(err, std::system_category());
             return std::system_error(code, 
@@ -36,7 +36,7 @@ constexpr auto throw_on_error(INVOCABLE invocable) {
                 source.file_name() + ":" + std::to_string(source.line()) + ":" + std::to_string(source.column()));
         };
 
-        auto result = invocable(std::forward<ARGS>(args)...);
+        auto result = invocable(args...);
         using result_t = decltype(result);
 
         if constexpr (std::integral<result_t>)
@@ -54,9 +54,11 @@ constexpr auto throw_on_error(INVOCABLE invocable) {
 }
 
 template <std::same_as<std::string>... ARGS_T>
-auto execl(fs::path exe, ARGS_T... args)
+auto exec(fs::path exe, ARGS_T... args) [[ noreturn ]]
 {
-    constexpr auto exec = throw_on_error<const char*, char* const[]>(::execv);
+    constexpr auto exec = throw_on_error<const char*, const char* []>([](const char * fname, const char * const command_args[]) {
+        return ::execv(fname, const_cast<char* const*>(command_args));
+    });
     auto args_arr = std::array<const char *, sizeof...(args)+1> { args.c_str()..., nullptr};
     return exec(exe.string().c_str(), args_arr.data(), std::source_location::current());
 }

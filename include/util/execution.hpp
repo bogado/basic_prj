@@ -13,6 +13,7 @@
 #include <expected>
 #include <csignal>
 #include <concepts>
+#include <string>
 
 namespace vb {
 
@@ -21,8 +22,8 @@ namespace fs = std::filesystem;
 struct execution {
 private:
     using pipe_t = pipe<>;
-    pid_t pid;
     pipe<> std_out;
+    pid_t pid;
 
     template <pipe_t execution::* INPUT>
     generator<std::string> lines() {
@@ -50,15 +51,15 @@ private:
         if(pid == 0) {
             std_out.redirect_out();
             std::cout << "Will exec now : " << exe << "\n";
-            return sys::execl(exe, args...);
+            return sys::exec(exe, args...);
         }
         return 0;
     }
 
 public:
     execution(fs::path exe, std::same_as<std::string> auto... args) :
-        pid(sys::fork()),
-        std_out{}
+        std_out{},
+        pid(sys::fork())
     {
         execute(exe, args...);
     }
