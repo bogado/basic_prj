@@ -39,7 +39,7 @@ private:
             if (auto val = input(); val) {
                 co_yield val.value();
             }
-            if(done) {
+            if (!input.has_data() && done) {
                 break;
             }
         }
