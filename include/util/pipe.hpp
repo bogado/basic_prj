@@ -74,7 +74,7 @@ private:
     buffer_type buffer;
 
     auto buffer_load(char* data, std::size_t size) {
-        auto read_size = ::read(file_descriptors[0], data, size);
+        auto read_size = sys::read(file_descriptors[0], data, size);
 
         if (closed()) {
             read_size = 0;
@@ -102,10 +102,10 @@ private:
             return;
         }
 
-        ::dup2(from_fd, fd);
+        sys::dup2(from_fd, fd);
 
         if (from_fd > 2) { // close if it's not std_in, std_out or std_err.
-            ::close(from_fd);
+            sys::close(from_fd);
         }
 
         from_fd = fd;
