@@ -2,13 +2,17 @@
 #ifndef INCLUDED_SYSTEM_HPP
 #define INCLUDED_SYSTEM_HPP
 
+#include <algorithm>
 #include <array>
-#include <system_error>
 #include <cerrno>
-#include <filesystem>
 #include <concepts>
+#include <filesystem>
+#include <iostream>
+#include <optional>
+#include <ranges>
 #include <source_location>
 #include <string>
+#include <system_error>
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -25,7 +29,7 @@ static constexpr auto PAGE_SIZE = 4 * KB;
 template <typename... ARGS, typename INVOCABLE>
 requires std::invocable<INVOCABLE, ARGS...>
 constexpr auto throw_on_error(INVOCABLE invocable) {
-    return [=](ARGS&&... args, std::source_location source = std::source_location::current()) {
+    return [=](ARGS... args, std::source_location source = std::source_location::current()) {
         auto error = [=](auto err) { 
             auto code = std::error_code(err, std::system_category());
             return std::system_error(code, 
@@ -36,7 +40,7 @@ constexpr auto throw_on_error(INVOCABLE invocable) {
                 source.file_name() + ":" + std::to_string(source.line()) + ":" + std::to_string(source.column()));
         };
 
-        auto result = invocable(std::forward<ARGS>(args)...);
+        auto result = invocable(args...);
         using result_t = decltype(result);
 
         if constexpr (std::integral<result_t>)
@@ -53,15 +57,22 @@ constexpr auto throw_on_error(INVOCABLE invocable) {
     };
 }
 
-template <std::same_as<std::string>... ARGS_T>
-auto execl(fs::path exe, ARGS_T... args)
+template <std::size_t N_ARGS>
+auto exec(fs::path exe, std::array<std::string, N_ARGS> data, std::source_location source = std::source_location::current())
 {
     constexpr auto exec = throw_on_error<const char*, char* const[]>(::execv);
-    auto args_arr = std::array<const char *, sizeof...(args)+1> { args.c_str()..., nullptr};
-    return exec(exe.string().c_str(), args_arr.data(), std::source_location::current());
+    auto args_arr = std::array<char *, N_ARGS + 2>{};
+    auto executable = exe.string();
+    args_arr[0] = executable.data();
+    std::ranges::copy(data | std::views::transform([](auto& dt) { return dt.data(); }), std::next(std::begin(args_arr)));
+    args_arr.back() = nullptr;
+    for (auto a: args_arr)  { std::cerr << (a?a:"«nullptr»") << " «←\n"; }
+    return exec(executable.c_str(), args_arr.data(), source);
 }
 
-std::array<int,2> pipe(std::source_location source = std::source_location::current()) {
+auto pipe(std::source_location source = std::source_location::current())
+-> std::array<int,2>
+{
     constexpr auto pipe = throw_on_error<>([]() {
         int fds[2];
         ::pipe(fds);
@@ -70,11 +81,21 @@ std::array<int,2> pipe(std::source_location source = std::source_location::curre
     return pipe(source);
 }
 
-auto waitpid(pid_t pid, int options, std::source_location source = std::source_location::current()) {
+auto wait_pid(pid_t pid, int option = 0, std::source_location source = std::source_location::current())
+-> std::optional<int>
+{
     constexpr auto sys_waitpid = throw_on_error<pid_t, int*, int>(::waitpid);
-    int status;
-    sys_waitpid(pid, &status, options, source);
-    return status;
+    int status{0};
+    sys_waitpid(pid, &status, option, source);
+    if (status == 0) {
+        return std::optional<int>{};
+    }
+    return WEXITSTATUS(status);
+}
+
+auto status_pid(pid_t pid, std::source_location source = std::source_location::current())
+{
+    return wait_pid(pid, WNOHANG, source);
 }
 
 constexpr auto dup2    = throw_on_error<int, int>(::dup2);
