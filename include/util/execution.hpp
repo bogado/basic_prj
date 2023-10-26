@@ -46,6 +46,11 @@ private:
     {
         if(pid == 0) {
             std_out.redirect_out();
+            std::cerr << "Will exec now : " << exe << "(";
+            for (auto a : args) {
+                std::cerr << "'" << a << "' ";
+            };
+            std::cerr << ")\n";
             return sys::exec(exe, args, source);
         }
         return 0;

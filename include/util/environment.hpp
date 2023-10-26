@@ -4,7 +4,6 @@
 #include <cmath>
 #include <string_view>
 #include <cstdlib>
-#include <array>
 #include <optional>
 
 #include "util/converters.hpp"
