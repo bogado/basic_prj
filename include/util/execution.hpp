@@ -9,9 +9,7 @@
 
 #include <array>
 #include <concepts>
-#include <expected>
-#include <filesystem>
-#include <optional>
+#include <string>
 
 namespace vb {
 
@@ -20,9 +18,8 @@ namespace fs = std::filesystem;
 struct execution {
 private:
     using pipe_t = pipe<>;
-    pid_t pid;
-    std::optional<int> current_status;
     pipe<> std_out;
+    pid_t pid;
 
     template <pipe_t execution::* INPUT>
     generator<std::string> lines() {
@@ -34,7 +31,7 @@ private:
             if (auto val = input(); val) {
                 co_yield val.value();
             }
-            if(done) {
+            if (!input.has_data() && done) {
                 break;
             }
             current_status = sys::status_pid(pid);
@@ -57,7 +54,6 @@ private:
     }
 
 public:
-
     template <std::size_t SIZE_T>
     execution(fs::path exe, std::array<std::string, SIZE_T> args, std::source_location source = std::source_location::current()) :
         pid(sys::fork()),

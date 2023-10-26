@@ -75,8 +75,8 @@ struct generator {
     }
 
     struct iterator {
-        using value_type = value_type;
-        using reference = reference;
+        using value_type = generator::value_type;
+        using reference = generator::reference;
 
         generator *self = nullptr;
         value_type ref{};

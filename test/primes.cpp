@@ -2,6 +2,7 @@
 #include "util/generator.hpp"
 #include <iostream>
 #include <array>
+#include <cmath>
 
 vb::generator<unsigned> primes(unsigned start)
 {
