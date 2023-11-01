@@ -8,6 +8,8 @@
 #include <array>
 #include <expected>
 #include <ranges>
+#include <cstddef>
+
 #include <unistd.h>
 
 namespace vb {
@@ -69,9 +71,25 @@ template <std::size_t BUFFER_SIZE = (4 * KB)>
 struct pipe {
     using buffer_type = vb::buffer_type<BUFFER_SIZE>;
 
+    enum class direction_type {
+        READ = 1,
+        WRITE = 2,
+        BOTH = 3
+    };
+    using enum direction_type;
+
+    template <direction_type DIR>
+    static constexpr auto not_for = DIR == READ? WRITE : DIR == WRITE ? READ : BOTH;
+
 private:
+    template <direction_type DIR>
+    static constexpr auto idx = DIR == READ ? 0 : 1; // index
+
+
     std::array<int,2> file_descriptors{-1,-1};
     buffer_type buffer;
+
+    direction_type direction = BOTH;
 
     auto buffer_load(char* data, std::size_t size) {
         auto read_size = sys::read(file_descriptors[0], data, size);
@@ -96,28 +114,40 @@ private:
         return buffer.load([this](char* data, std::size_t size) { return buffer_load(data, size); });
     }
 
-    void redirect_fd(int fd, int& from_fd) 
+    void redirect_fd(int& to_fd, int updated_fd) 
     {
-        if (from_fd == fd) {
+        if (to_fd == updated_fd) {
             return;
         }
 
-        sys::dup2(from_fd, fd);
+        auto new_fd = sys::dup2(to_fd, updated_fd);
 
-        if (from_fd > 2) { // close if it's not std_in, std_out or std_err.
-            sys::close(from_fd);
+        if (to_fd > 2) { // close original fd if it's not std_in, std_out or std_err.
+            std::cerr << "Closing " << to_fd << "\n";
+            sys::close(to_fd);
         }
 
-        from_fd = fd;
+        to_fd = new_fd;
     }
 
 public:
+    template <direction_type DIR>
+    void redirect(int fd) {
+        redirect_fd(file_descriptors[idx<DIR>], fd);
+        set_direction<DIR>();
+    }
+
+    // TODO: Support for writting.
+    void redirect_in() {
+        redirect<READ>(0);
+    }
+
     void redirect_out() {
-        redirect_fd(1, file_descriptors[1]);
+        redirect<WRITE>(1);
     }
 
     void redirect_err() {
-        redirect_fd(2, file_descriptors[1]);
+        redirect<WRITE>(2);
     }
 
     void close() {
@@ -129,8 +159,26 @@ public:
         }
     }
 
+    template <direction_type DIR>
+    void set_direction()
+    {
+        if constexpr (DIR == BOTH) {
+            throw std::logic_error("Set direction for BOTH is meanless");
+        }
+
+        direction = DIR;
+        sys::close(file_descriptors[idx<not_for<DIR>>]);
+        file_descriptors[idx<not_for<DIR>>] = -1;
+    }
+
+    template <direction_type DIR> 
+    bool is() const
+    {
+        return direction == BOTH || direction == DIR;
+    }
+
     bool closed() const {
-        return file_descriptors[0] == -1 || file_descriptors[1] == -1;
+        return (is<READ>() && file_descriptors[0] == -1) && (is<WRITE>() && file_descriptors[1] == -1);
     }
 
     bool has_data() const {
