@@ -20,13 +20,14 @@ private:
     using pipe_t = pipe<>;
     pipe<> std_out;
     pid_t pid;
+    sys::status_type current_status{};
 
     template <pipe_t execution::* INPUT>
     generator<std::string> lines() {
         static std::atomic<bool> done = false;
         auto& input = this->*INPUT;
 
-        while (!current_status.has_value() || input.has_data())
+        while (input.has_data() ||  ! current_status.has_value())
         {
             if (auto val = input(); val) {
                 co_yield val.value();
@@ -43,12 +44,9 @@ private:
     {
         if(pid == 0) {
             std_out.redirect_out();
-            std::cerr << "Will exec now : " << exe << "(";
-            for (auto a : args) {
-                std::cerr << "'" << a << "' ";
-            };
-            std::cerr << ")\n";
             return sys::exec(exe, args, source);
+        } else {
+            std_out.set_direction<pipe_t::READ>();
         }
         return 0;
     }
@@ -56,8 +54,8 @@ private:
 public:
     template <std::size_t SIZE_T>
     execution(fs::path exe, std::array<std::string, SIZE_T> args, std::source_location source = std::source_location::current()) :
-        pid(sys::fork()),
-        std_out{}
+        std_out{},
+        pid(sys::fork())
     {
         execute(exe, std::move(args), source);
     }
@@ -72,14 +70,14 @@ public:
     }
 
     auto wait()
+        -> int
     {
-        while (!current_status.has_value()) {
             current_status = sys::wait_pid(pid);
+        return current_status.value_or(-1);
         }
-        return current_status.value(); // NOLINT(bugprone-unchecked-optional-access) // Actually checked above
-    }
 
     auto status()
+        -> sys::status_type
     {
         current_status = sys::status_pid(pid);
         return current_status;
