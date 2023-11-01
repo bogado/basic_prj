@@ -1,6 +1,5 @@
 // main.cpp                                                                        -*-C++-*-
 #include "util/execution.hpp"
-#include "util/environment.hpp"
 
 #include <iostream>
 #include <iterator>
