@@ -3,6 +3,9 @@
 
 #include "./string.hpp"
 
+#include <algorithm>
+#include <ranges>
+
 namespace vb {
 
 // NOLINTEND modernize-avoid-c-arrays //
@@ -22,6 +25,7 @@ constexpr auto splited = []() {
     auto end = std::ranges::copy(strings, std::begin(result));
     return std::span{std::begin(STR), end};
 }();
+
 namespace test {
 using namespace std::literals;
     static constexpr auto splited_test = splited<"test,a,b,c">;
