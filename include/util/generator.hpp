@@ -49,12 +49,16 @@ struct generator {
         return handle.promise().current;
     }
 
-    void resume()
+    bool resume()
     {
+        if (handle.done()) {
+            return false;
+        }
         handle.resume();
         if (auto thrown = handle.promise().exception; thrown) {
             std::rethrow_exception(thrown);
         }
+        return true;
     }
 
     value_type next()
@@ -63,6 +67,9 @@ struct generator {
             resume();
         }
         auto& opt = current();
+        if (!opt.has_value()) {
+            return {};
+        }
         value_type val = opt.value();
         opt.reset();
         return val;
