@@ -61,7 +61,7 @@ public:
     execution(fs::path exe, std::source_location source = std::source_location()) :
         execution(exe, std::array<std::string, 0>{}, source)
     {}
-       
+
     auto stdout_lines()
     {
         return lines<&execution::std_out>();
@@ -70,9 +70,9 @@ public:
     auto wait()
         -> int
     {
-            current_status = sys::wait_pid(pid);
+        current_status = sys::wait_pid(pid);
         return current_status.value_or(-1);
-        }
+    }
 
     auto status()
         -> sys::status_type
