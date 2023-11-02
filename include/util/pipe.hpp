@@ -85,21 +85,26 @@ private:
     template <direction_type DIR>
     static constexpr auto idx = DIR == READ ? 0 : 1; // index
 
-
     std::array<int,2> file_descriptors{-1,-1};
     buffer_type buffer;
 
     direction_type direction = BOTH;
 
-    auto buffer_load(char* data, std::size_t size) {
+    auto buffer_load(char* data, std::size_t size)
+        -> long
+    {
+        if (closed()) {
+            return 0;
+        }
+
         auto read_size = sys::read(file_descriptors[0], data, size);
 
         if (closed()) {
             read_size = 0;
             return read_size;
         }
-        if (read_size == 0)
-        {
+
+        if (read_size == 0) {
             close();
         } else if (read_size < 0) {
             if (errno == EINTR || errno == EAGAIN) {
@@ -132,25 +137,30 @@ private:
 
 public:
     template <direction_type DIR>
-    void redirect(int fd) {
+    void redirect(int fd)
+    {
         redirect_fd(file_descriptors[idx<DIR>], fd);
         set_direction<DIR>();
     }
 
     // TODO: Support for writting.
-    void redirect_in() {
+    void redirect_in()
+    {
         redirect<READ>(0);
     }
 
-    void redirect_out() {
+    void redirect_out()
+    {
         redirect<WRITE>(1);
     }
 
-    void redirect_err() {
+    void redirect_err()
+    {
         redirect<WRITE>(2);
     }
 
-    void close() {
+    void close()
+    {
         for (auto& fd : file_descriptors) {
             if (fd != -1) {
                 ::close(fd);
@@ -190,7 +200,7 @@ public:
         std::string result;
         while (result.size() == 0 && result.back() != '\n')
         {
-            if (closed() || (!has_data() && !buffer_load()))
+            if (!buffer_load())
             {
                 break;
             }
