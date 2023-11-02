@@ -5,8 +5,6 @@
 #include "system.hpp"
 #include "pipe.hpp"
 
-#include <iostream>
-
 #include <array>
 #include <concepts>
 #include <string>
