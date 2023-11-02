@@ -75,10 +75,10 @@ auto exec(fs::path exe, std::array<std::string, N_ARGS> data, std::source_locati
     auto args_arr = std::array<char *, N_ARGS + 2>{};
     auto executable = exe.string();
     args_arr[0] = executable.data();
-    std::ranges::copy(data | std::views::transform([](auto& dt) { return dt.data(); }), std::next(std::begin(args_arr)));
+    std::ranges::copy(data | std::views::transform([](auto& arg_string) { return arg_string.data(); }), std::next(std::begin(args_arr)));
     args_arr.back() = nullptr;
 
-    debug.log_to(std::cerr, "exec( ", data, ") ");
+    debug.log_to(std::cerr, "exec( ", args_arr, ") ");
 
     return exec(executable.c_str(), args_arr.data(), source);
 }
