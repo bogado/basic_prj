@@ -55,6 +55,7 @@ public:
         std_out{},
         pid(sys::fork())
     {
+        debug("About to exec : ", exe, " ", args);
         execute(exe, std::move(args), source);
     }
 
