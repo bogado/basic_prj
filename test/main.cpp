@@ -41,3 +41,18 @@ bool test_buffer()
     return true;
 }
 
+using namespace std::literals;
+
+int main()
+{
+    try {
+        test_buffer();
+        auto handler = vb::execution(vb::fs::path("/usr/bin/find"sv), std::array{std::string{test_dir}, "-print"s});
+        for (auto line : handler.stdout_lines()) {
+            std::cout << "→ " << line << "\n";
+        }
+        std::cout << "Exit: " <<  handler.wait() << "\n";
+    } catch (std::exception& e) {
+        std::cerr << "Caught exception : " << e.what() <<"\n";
+    }
+}
