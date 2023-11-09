@@ -8,6 +8,7 @@
 #include <array>
 #include <concepts>
 #include <string>
+#include <atomic>
 
 namespace vb {
 

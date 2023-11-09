@@ -67,28 +67,28 @@ public:
     }
 };
 
+enum class io_direction {
+    READ = 1,
+    WRITE = 2,
+    BOTH = 3
+};
+
 template <std::size_t BUFFER_SIZE = (4 * KB)>
 struct pipe {
     using buffer_type = vb::buffer_type<BUFFER_SIZE>;
+    using enum io_direction;
 
-    enum class direction_type {
-        READ = 1,
-        WRITE = 2,
-        BOTH = 3
-    };
-    using enum direction_type;
-
-    template <direction_type DIR>
+    template <io_direction DIR>
     static constexpr auto not_for = DIR == READ? WRITE : DIR == WRITE ? READ : BOTH;
 
 private:
-    template <direction_type DIR>
+    template <io_direction DIR>
     static constexpr auto idx = DIR == READ ? 0 : 1; // index
 
     std::array<int,2> file_descriptors{-1,-1};
     buffer_type buffer;
 
-    direction_type direction = BOTH;
+    io_direction direction = BOTH;
 
     auto buffer_load(char* data, std::size_t size)
         -> long
@@ -136,7 +136,7 @@ private:
     }
 
 public:
-    template <direction_type DIR>
+    template <io_direction DIR>
     void redirect(int fd)
     {
         redirect_fd(file_descriptors[idx<DIR>], fd);
@@ -169,7 +169,7 @@ public:
         }
     }
 
-    template <direction_type DIR>
+    template <io_direction DIR>
     void set_direction()
     {
         if constexpr (DIR == BOTH) {
@@ -181,7 +181,7 @@ public:
         file_descriptors[idx<not_for<DIR>>] = -1;
     }
 
-    template <direction_type DIR> 
+    template <io_direction DIR> 
     bool is() const
     {
         return direction == BOTH || direction == DIR;
