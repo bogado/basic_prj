@@ -23,10 +23,8 @@ namespace vb {
 
 namespace fs = std::filesystem;
 
-static constexpr auto KB = std::size_t{1024};
 namespace sys {
 
-static constexpr auto PAGE_SIZE = 4 * KB;
 template <typename... ARGS, typename INVOCABLE, std::size_t IGNORED_SIZE = 0>
 requires std::invocable<INVOCABLE, ARGS...>
 constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::array<int, IGNORED_SIZE> ignored = {}) {

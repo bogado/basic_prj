@@ -4,6 +4,7 @@
 #define INCLUDED_PIPE_HPP
 
 #include "system.hpp"
+#include "buffer.hpp"
 
 #include <array>
 #include <expected>
@@ -14,81 +15,36 @@
 
 namespace vb {
 
-template <std::size_t BUFFER_SIZE = sys::PAGE_SIZE>
-struct buffer_type {
-    using storage_type = std::array<char, BUFFER_SIZE>;
-    using const_iterator = storage_type::const_iterator;
-    using iterator = storage_type::iterator;
-private:
-    storage_type data{};
-    iterator free_start = data.begin();
-    iterator consumed = free_start;
-public:
-    bool has_data() const {
-        return consumed != free_start;
-    }
-
-    std::size_t free() const {
-        return static_cast<std::size_t>(std::distance(const_iterator{free_start}, data.end()));
-    }
-
-    std::size_t loaded() const {
-        return static_cast<std::size_t>(std::distance(consumed, free_start));
-    }
-
-    bool load(std::invocable<char *, std::size_t> auto reader_fn)
-    {
-        auto read = reader_fn(&*free_start, free());
-        std::advance(free_start, read);
-        return read >= 0;
-    }
-
-    std::string unload_line() {
-        while(*consumed == '\0' && consumed != free_start)
-        {
-            consumed++;
-        }
-
-        auto consume_end = std::ranges::find(consumed, free_start, '\n');
-        auto result = std::string(consumed, consume_end);
-
-        if (consume_end != free_start && *consume_end == '\n') {
-            result.append('\n', 1);
-            consume_end++;
-        }
-
-        consumed = consume_end;
-        if (consumed == free_start) {
-            free_start = data.begin();
-            consumed = free_start;
-        }
-
-        return result;
-    }
+enum class io_direction {
+    NONE = 0,
+    READ = 1,
+    WRITE = 2,
+    BOTH = 3
 };
+
+template <io_direction DIR>
+constexpr auto inline inverse_direction = 
+( DIR == io_direction::READ
+    ? io_direction::WRITE
+    : ( DIR == io_direction::WRITE
+        ? io_direction::READ
+        : io_direction::BOTH
+    )
+);
 
 template <std::size_t BUFFER_SIZE = (4 * KB)>
 struct pipe {
     using buffer_type = vb::buffer_type<BUFFER_SIZE>;
-
-    enum class direction_type {
-        READ = 1,
-        WRITE = 2,
-        BOTH = 3
-    };
-    using enum direction_type;
-
-    template <direction_type DIR>
-    static constexpr auto not_for = DIR == READ? WRITE : DIR == WRITE ? READ : BOTH;
+    using enum io_direction;
 
 private:
-    template <direction_type DIR>
+    template <io_direction DIR>
     static constexpr auto idx = DIR == READ ? 0 : 1; // index
 
     std::array<int,2> file_descriptors{-1,-1};
     buffer_type buffer;
 
-    direction_type direction = BOTH;
+    io_direction direction = BOTH;
 
     auto buffer_load(char* data, std::size_t size)
         -> long
@@ -136,7 +92,7 @@ private:
     }
 
 public:
-    template <direction_type DIR>
+    template <io_direction DIR>
     void redirect(int fd)
     {
         redirect_fd(file_descriptors[idx<DIR>], fd);
@@ -169,7 +125,7 @@ public:
         }
     }
 
-    template <direction_type DIR>
+    template <io_direction DIR>
     void set_direction()
     {
         if constexpr (DIR == BOTH) {
@@ -177,11 +133,11 @@ public:
         }
 
         direction = DIR;
-        sys::close(file_descriptors[idx<not_for<DIR>>]);
-        file_descriptors[idx<not_for<DIR>>] = -1;
+        sys::close(file_descriptors[idx<inverse_direction<DIR>>]);
+        file_descriptors[idx<inverse_direction<DIR>>] = -1;
     }
 
-    template <direction_type DIR> 
+    template <io_direction DIR> 
     bool is() const
     {
         return direction == BOTH || direction == DIR;
