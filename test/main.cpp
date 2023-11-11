@@ -33,7 +33,7 @@ bool test_buffer()
     while(hello.has_data()) {
         std::cout << hello.unload_line() << " ";
         if (!has_added) {
-            hello.load(reader("end of the very large line\n"));
+            std::cout << "\nloaded : " << hello.load(reader("end of the very large line\n")) << "\n";
             has_added = true;
         }
     }
