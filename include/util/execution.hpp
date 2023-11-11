@@ -42,9 +42,11 @@ private:
     auto execute(fs::path exe, std::array<std::string, SIZE> args, std::source_location source = std::source_location::current())
     {
         if(pid == 0) {
+            debug("About to exec at child: ", exe.string(), ", ", args);
             std_out.redirect_out();
             return sys::exec(exe, args, source);
         } else {
+            debug("closing read side on parent");
             std_out.set_direction<pipe_t::READ>();
         }
         return 0;
@@ -56,7 +58,6 @@ public:
         std_out{},
         pid(sys::fork())
     {
-        debug("About to exec : ", exe, " ", args);
         execute(exe, std::move(args), source);
     }
 
