@@ -100,8 +100,8 @@ auto wait_pid(pid_t pid, int option = 0, std::source_location source = std::sour
 {
     constexpr auto sys_waitpid = throw_on_error<pid_t, int*, int>("waitpid", ::waitpid, std::array{ ECHILD });
     int status{0};
-    sys_waitpid(pid, &status, option, source);
-    if (status == 0) {
+    int pid_r = sys_waitpid(pid, &status, option, source);
+    if (pid_r != pid || !WIFEXITED(status)) {
         return status_type{};
     }
     return WEXITSTATUS(status);
