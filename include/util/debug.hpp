@@ -9,14 +9,34 @@
 #include <ostream>
 #include <sstream>
 #include <unistd.h>
+#include <type_traits>
 
 #include "string.hpp"
 
 namespace vb {
 
+#if defined(NDEBUG)
+inline constexpr auto debug_enabled = false;
+#else
+inline constexpr auto debug_enabled = true;
+#endif
+
+
 template <typename TYPE>
 concept is_debugable = requires(const TYPE& value, std::ostream& out) {
     { out << value } -> std::same_as<std::ostream&>;
+};
+
+struct no_debug {
+    void updatepid() {}
+
+    template <typename... ARGS>
+    void operator()(ARGS...) {}
+
+    void flush_to(std::ostream&) {}
+
+    template <typename... ARGS>
+    void log_to(std::ostream&, ARGS...) {}
 };
 
 struct debugger {
@@ -64,7 +84,9 @@ struct debugger {
     }
 };
 
-inline static auto debug = debugger{};
+using debug_type = std::conditional_t<debug_enabled, debugger, no_debug>;
+
+inline auto debug = debug_type{};
 
 } // namespace vb
 
