@@ -44,10 +44,9 @@ constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::a
                 source.file_name() + ":" + std::to_string(source.line()) + ":" + std::to_string(source.column()));
         };
 
-        debug(name);
         auto result = invocable(args...);
         using result_t = decltype(result);
-        debug("( "); (debug(args, " "), ...); debug.log_to(std::cerr, " ) = ", result);
+        debug(name, "( "); (debug(args, " "), ...); debug.log_to(std::cerr, " ) = ", result);
 
         if constexpr (IGNORED_SIZE != 0) {
             if (std::find(std::begin(ignored), std::end(ignored), errno) != std::end(ignored)) {
