@@ -44,11 +44,11 @@ public:
     }
 
     template <typename... ARGS>
-    bool load(auto reader_fn, ARGS... args)
+    auto load(auto reader_fn, ARGS... args)
     {
         auto read = reader_fn(args..., &*usage_end, free());
         std::advance(usage_end, read);
-        return read >= 0;
+        return read;
     }
 
     std::string unload_line() {

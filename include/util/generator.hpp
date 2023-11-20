@@ -26,7 +26,7 @@ struct generator {
 
         generator get_return_object() noexcept
         {
-            return generator(handle_type::from_promise(*this));
+            return generator{handle_type::from_promise(*this)};
         }
 
         std::suspend_never  initial_suspend() noexcept { return {}; }

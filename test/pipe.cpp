@@ -1,11 +1,12 @@
 // pipe.cpp                                                                        -*-C++-*-
 
-#include "util/pipe.hpp"
+#include <catch2/catch_all.hpp>
+
+#include "util/buffer.hpp"
 
 #include <algorithm>
-#include <iostream>
 
-int main()
+TEST_CASE("Buffer", "[buffer]")
 {
     auto reader = [](auto&& message) {
         return [message](auto load, auto sz) {
@@ -14,23 +15,18 @@ int main()
         };
     };
 
-    static constexpr std::size_t BIG = 1024z*5z;
-    try {
-        auto hello = vb::buffer_type();
-        hello.load(reader("Hello\n"));
-        std::cout << hello.unload_line() << " ";
-        hello.load(reader("world\n!!\n"));
-        bool has_added = false;
-        hello.load(reader(std::string(BIG, '-')));
-        while(hello.has_data()) {
-            std::cout << hello.unload_line() << " ";
-            if (!has_added) {
-                std::cout << "\nloaded : " << hello.load(reader("end of the very large line\n")) << "\n";
-                has_added = true;
-            }
-        }
-        std::cout << "\n";
-    } catch (std::exception& e) {
-        std::cerr << "Caught exception : " << e.what() <<"\n";
-    }
-} 
+    static constexpr std::size_t BIG = vb::sys::PAGE_SIZE;
+
+    auto hello = vb::buffer_type();
+
+    hello.load(reader("Hello\n"));
+
+    REQUIRE(hello.unload_line() == "Hello");
+
+    hello.load(reader("world\n!!\n"));
+    REQUIRE(hello.unload_line() == "world");
+    REQUIRE(hello.unload_line() == "!!");
+
+    REQUIRE(hello.load(reader(std::string(BIG, '-'))) == vb::sys::PAGE_SIZE);
+    REQUIRE(hello.unload_line() == std::string(vb::sys::PAGE_SIZE, '-'));
+}
