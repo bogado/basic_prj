@@ -1,4 +1,4 @@
-// pipe.cpp                                                                        -*-C++-*-
+// buffer.cpp                                                                        -*-C++-*-
 
 #include <catch2/catch_all.hpp>
 
@@ -20,12 +20,11 @@ TEST_CASE("Buffer", "[buffer]")
     auto hello = vb::buffer_type();
 
     hello.load(reader("Hello\n"));
-
-    REQUIRE(hello.unload_line() == "Hello");
+    REQUIRE(hello.unload_line() == std::string("Hello\n"));
 
     hello.load(reader("world\n!!\n"));
-    REQUIRE(hello.unload_line() == "world");
-    REQUIRE(hello.unload_line() == "!!");
+    REQUIRE(hello.unload_line() == std::string("world\n"));
+    REQUIRE(hello.unload_line() == "!!\n");
 
     REQUIRE(hello.load(reader(std::string(BIG, '-'))) == vb::sys::PAGE_SIZE);
     REQUIRE(hello.unload_line() == std::string(vb::sys::PAGE_SIZE, '-'));

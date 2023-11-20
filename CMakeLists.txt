@@ -22,6 +22,9 @@ if(cmake_cxx_compiler_id MATCHES ".*clang")
   endif()
 endif()
 
+# inlcude catch2 v3 setup
+include(cmake/Catch2.cmake)
+
 # standard compiler warnings
 include(cmake/CompilerWarnings.cmake)
 set_project_warnings(project_options)
