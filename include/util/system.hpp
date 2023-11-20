@@ -23,10 +23,8 @@ namespace vb {
 
 namespace fs = std::filesystem;
 
-static constexpr auto KB = std::size_t{1024};
 namespace sys {
 
-static constexpr auto PAGE_SIZE = 4 * KB;
 template <typename... ARGS, typename INVOCABLE, std::size_t IGNORED_SIZE = 0>
 requires std::invocable<INVOCABLE, ARGS...>
 constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::array<int, IGNORED_SIZE> ignored = {}) {
@@ -44,10 +42,9 @@ constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::a
                 source.file_name() + ":" + std::to_string(source.line()) + ":" + std::to_string(source.column()));
         };
 
-        debug(name);
         auto result = invocable(args...);
         using result_t = decltype(result);
-        debug("( "); (debug(args, " "), ...); debug.log_to(std::cerr, " ) = ", result);
+        debug(name, "( "); (debug(args, " "), ...); debug.log_to(std::cerr, " ) = ", result);
 
         if constexpr (IGNORED_SIZE != 0) {
             if (std::find(std::begin(ignored), std::end(ignored), errno) != std::end(ignored)) {
@@ -83,7 +80,7 @@ auto exec(fs::path exe, std::array<std::string, N_ARGS> data, std::source_locati
     return exec(executable.c_str(), args_arr.data(), source);
 }
 
-auto pipe(std::source_location source = std::source_location::current())
+inline auto pipe(std::source_location source = std::source_location::current())
 -> std::array<int,2>
 {
     constexpr auto pipe = throw_on_error<>("pipe", []() {
@@ -96,31 +93,31 @@ auto pipe(std::source_location source = std::source_location::current())
 
 using status_type = std::optional<int>;
 
-auto wait_pid(pid_t pid, int option = 0, std::source_location source = std::source_location::current())
+inline auto wait_pid(pid_t pid, int option = 0, std::source_location source = std::source_location::current())
 -> status_type
 {
     constexpr auto sys_waitpid = throw_on_error<pid_t, int*, int>("waitpid", ::waitpid, std::array{ ECHILD });
     int status{0};
-    sys_waitpid(pid, &status, option, source);
-    if (status == 0) {
+    int pid_r = sys_waitpid(pid, &status, option, source);
+    if (pid_r != pid || !WIFEXITED(status)) {
         return status_type{};
     }
     return WEXITSTATUS(status);
 }
 
-auto status_pid(pid_t pid, std::source_location source = std::source_location::current())
+inline auto status_pid(pid_t pid, std::source_location source = std::source_location::current())
 -> status_type
 {
     return wait_pid(pid, WNOHANG, source);
 }
 
-constexpr auto dup2    = throw_on_error<int, int>("dup2", ::dup2);
-constexpr auto fork    = throw_on_error<>("fork", ::fork);
-constexpr auto signal  = throw_on_error<int, void(*)(int)>("signal", ::signal);
-constexpr auto read    = throw_on_error<int, void*, std::size_t>("Read", ::read);
-constexpr auto write   = throw_on_error<int, const void*, std::size_t>("write", ::write);
-constexpr auto close   = throw_on_error<int>("close", ::close);
-constexpr auto open    = throw_on_error<const char*, int>("open", ::open);
+constexpr inline auto dup2    = throw_on_error<int, int>("dup2", ::dup2);
+constexpr inline auto fork    = throw_on_error<>("fork", ::fork);
+constexpr inline auto signal  = throw_on_error<int, void(*)(int)>("signal", ::signal);
+constexpr inline auto read    = throw_on_error<int, void*, std::size_t>("Read", ::read);
+constexpr inline auto write   = throw_on_error<int, const void*, std::size_t>("write", ::write);
+constexpr inline auto close   = throw_on_error<int>("close", ::close);
+constexpr inline auto open    = throw_on_error<const char*, int>("open", ::open);
 
 }}
 

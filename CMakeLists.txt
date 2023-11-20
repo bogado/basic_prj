@@ -1,3 +1,5 @@
+project (basic_prj LANGUAGES CXX)
+
 add_library(basic_prj INTERFACE 
     include/util/arrays.hpp
     include/util/string.hpp
