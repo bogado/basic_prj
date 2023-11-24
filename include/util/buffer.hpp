@@ -28,54 +28,63 @@ struct buffer_type {
     using iterator = storage_type::iterator;
 private:
     storage_type data{};
-    iterator usage_end = data.begin();
-    iterator usage_begin = usage_end;
+    iterator used_begin = data.begin();
+    iterator used_end   = data.begin();
+
+    inline constexpr bool valid_equal(char* what, char value) {
+        return what != used_end && *what == value;
+    }
 public:
     bool has_data() const {
-        return usage_begin != usage_end;
+        return used_begin != used_end;
     }
 
     std::size_t free() const {
-        return static_cast<std::size_t>(std::distance(const_iterator{usage_end}, data.end()));
+        return static_cast<std::size_t>(std::distance(const_iterator{used_end}, data.end()));
     }
 
     std::size_t loaded() const {
-        return static_cast<std::size_t>(std::distance(usage_begin, usage_end));
+        return static_cast<std::size_t>(std::distance(used_begin, used_end));
     }
 
-    template <typename... ARGS>
-    auto load(auto reader_fn, ARGS... args)
+    template <typename... ARGS, std::invocable<ARGS..., char*, std::size_t> FUNC_T, std::ptrdiff_t FAILURE = -1>
+    auto load(FUNC_T reader_fn, ARGS... args)
+    -> ptrdiff_t
     {
-        auto read = reader_fn(args..., &*usage_end, free());
-        std::advance(usage_end, read);
+        auto read = reader_fn(args..., &*used_end, free());
+        if (read == FAILURE) {
+            return FAILURE;
+        }
+        std::advance(used_end, read);
         return read;
     }
 
-    std::string unload_line() {
-        while(*usage_begin == '\0' && usage_begin != usage_end)
-        {
-            usage_begin++;
+    std::string unload_line()
+    {
+        if (used_begin == used_end) {
+            return {};
         }
 
-        auto consume_end = std::ranges::find(usage_begin, usage_end, '\n');
-        auto result = std::string(usage_begin, consume_end);
+        auto consume_end = std::ranges::find(used_begin, used_end, '\n');
+        auto result = std::string(used_begin, consume_end);
 
-        if (consume_end != usage_end && *consume_end == '\n') {
-            result.append('\n', 1);
+        if (valid_equal(consume_end, '\n')) {
+            result.append(1, '\n');
             consume_end++;
+            if (valid_equal(consume_end, '\0')) {
+                consume_end++;
+            }
         }
 
-        usage_begin = consume_end;
-        if (usage_begin == usage_end) {
-            usage_end = data.begin();
-            usage_begin = usage_end;
+        if (consume_end == used_end) {
+            used_begin = used_end = data.begin();
+        } else {
+            used_begin = consume_end;
         }
 
         return result;
     }
 };
-
-
 
 }
 
