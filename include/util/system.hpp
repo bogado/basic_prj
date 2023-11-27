@@ -12,10 +12,12 @@
 #include <source_location>
 #include <string>
 #include <system_error>
+#include <chrono>
 
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <poll.h>
 
 #include "debug.hpp"
 
@@ -111,6 +113,32 @@ inline auto status_pid(pid_t pid, std::source_location source = std::source_loca
     return wait_pid(pid, WNOHANG, source);
 }
 
+struct poll_arg {
+    int fd;
+    short events;
+
+    operator ::pollfd() const
+    {
+        return pollfd{
+            fd,
+            events,
+            0};
+    }
+};
+
+template <std::same_as<poll_arg>... Ts>
+auto poll(std::chrono::milliseconds timeout, Ts... fd_s)
+{
+    std::array<struct pollfd, sizeof...(Ts)> pollfds {fd_s...};
+    static auto poll = throw_on_error<struct pollfd*, std::size_t, int>("poll", ::poll);
+
+    poll(pollfds.data(), pollfds.size(), static_cast<int>(timeout.count()));
+    std::array<short, sizeof...(Ts)> result;
+    std::ranges::copy(pollfds | std::views::transform(&::pollfd::revents), result.begin());
+    return result;
+}
+
+constexpr inline auto dup     = throw_on_error<int>("dup", ::dup);
 constexpr inline auto dup2    = throw_on_error<int, int>("dup2", ::dup2);
 constexpr inline auto fork    = throw_on_error<>("fork", ::fork);
 constexpr inline auto signal  = throw_on_error<int, void(*)(int)>("signal", ::signal);
