@@ -129,6 +129,14 @@ private:
         to_fd = new_fd;
     }
 
+    bool can_be_read() const 
+    {
+        using namespace std::literals;
+        return (sys::poll(0ms, sys::poll_arg {
+            .fd = file_descriptors[IDX<READ>],
+            .events = POLLIN})[0] & POLLIN) != 0;
+    }
+
 public:
     using expect_string = std::expected<std::string, std::error_code>;
     using unexpected = std::unexpected<std::error_code>;
@@ -194,7 +202,7 @@ public:
     }
 
     bool has_data() const {
-        return (buffer.has_data());
+        return (buffer.has_data() || can_be_read());
     }
 
     template <parse::can_be_outstreamed... DATA_Ts>
