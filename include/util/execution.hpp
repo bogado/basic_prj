@@ -23,16 +23,12 @@ private:
 
     template <pipe_t execution::* INPUT>
     generator<std::string> lines() {
-        static std::atomic<bool> done = false;
         auto& input = this->*INPUT;
 
-        while (input.has_data() ||  ! current_status.has_value())
+        while (input.has_data() || !current_status.has_value())
         {
             if (auto val = input(); val) {
                 co_yield val.value();
-            }
-            if (!input.has_data() && done) {
-                break;
             }
             current_status = sys::status_pid(pid);
         }
