@@ -199,7 +199,7 @@ public:
     bool closed() const {
         return (is<READ>()  && file_descriptors[IDX<READ>] == -1)
             && (is<WRITE>() && file_descriptors[IDX<WRITE>] == -1);
-    }
+   }
 
     bool has_data() const {
         return (buffer.has_data() || can_be_read());
