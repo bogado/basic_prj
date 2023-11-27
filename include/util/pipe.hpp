@@ -5,6 +5,7 @@
 
 #include "system.hpp"
 #include "buffer.hpp"
+#include "./converters.hpp"
 
 #include <utility>
 #include <array>
@@ -179,6 +180,16 @@ public:
 
     bool has_data() const {
         return buffer.has_data();
+    }
+
+    template <parse::can_be_outstreamed... DATA_Ts>
+    auto operator()(DATA_Ts... data)
+    {
+        for (auto str : std::array{ parse::to_string(data)... })
+        {
+            sys::write(file_descriptors[idx<WRITE>], str.data(), str.size());
+            sys::write(file_descriptors[idx<WRITE>], "\n", 1);
+        }
     }
 
     std::expected<std::string, std::error_code> operator()()
