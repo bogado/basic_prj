@@ -1,10 +1,9 @@
 // main.cpp                                                                        -*-C++-*-
+#include <catch2/catch_all.hpp>
+
 #include "util/execution.hpp"
 
-#include <iostream>
-#include <iterator>
-#include <string>
-#include <algorithm>
+#include <string_view>
 #include <source_location>
 
 static constexpr auto test_dir = []() {
@@ -13,18 +12,25 @@ static constexpr auto test_dir = []() {
     return dir;
 }();
 
+using namespace std::literals;
+
+static constexpr auto expected = std::array{
+    "test_data"sv,
+    "123"sv,
+    "abc"sv };
 
 using namespace std::literals;
 
-int main()
+TEST_CASE("Execution of external command", "[execute]")
 {
-    try {
-        auto handler = vb::execution(vb::fs::path("/usr/bin/find"sv), std::array{std::string{test_dir}, "-print"s});
-        for (auto line : handler.stdout_lines()) {
-            std::cout << "→ " << line << "\n";
-        }
-        std::cout << "Exit: " <<  handler.wait() << "\n";
-    } catch (std::exception& e) {
-        std::cerr << "Caught exception : " << e.what() <<"\n";
+    auto handler = vb::execution(vb::fs::path("/usr/bin/find"sv), std::array{std::string{vb::fs::path(test_dir) / "test_data"}, "-printf"s, "%f"s});
+    auto expectation = expected.begin();
+    for (auto line : handler.stdout_lines()) {
+        REQUIRE(expectation != expected.end());
+        REQUIRE(*expectation == line);
+        ++expectation;
     }
+    REQUIRE(std::distance(expectation, expected.end()) == 0);
+
+    REQUIRE(handler.wait() == 0);
 }
