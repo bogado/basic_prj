@@ -10,7 +10,6 @@
 #include <utility>
 #include <array>
 #include <expected>
-#include <ranges>
 #include <cstddef>
 
 #include <unistd.h>
@@ -24,37 +23,49 @@ enum class io_direction {
     BOTH = 3
 };
 
-io_direction operator bitor(io_direction rhs, io_direction lhs)
+constexpr inline auto
+operator bitor(io_direction rhs, io_direction lhs)
+-> io_direction
 {
     return static_cast<io_direction>(std::to_underlying(rhs) bitor std::to_underlying(lhs));
 }
 
-io_direction operator bitand(io_direction rhs, io_direction lhs)
+constexpr inline auto
+operator bitand(io_direction rhs, io_direction lhs)
+-> io_direction
 {
     return static_cast<io_direction>(std::to_underlying(rhs) bitand std::to_underlying(lhs));
 }
 
-template <io_direction DIR>
-constexpr auto inline inverse_direction = 
-( DIR == io_direction::READ
-    ? io_direction::WRITE
-    : ( DIR == io_direction::WRITE
-        ? io_direction::READ
-        : io_direction::BOTH
-    )
-);
+constexpr inline auto
+operator not(io_direction dir)
+-> io_direction
+{
+    using enum io_direction;
+    switch(dir)
+    {
+    case READ:
+        return WRITE;
+    case WRITE:
+        return READ;
+    case BOTH:
+        return NONE;
+    default:
+        return BOTH;
+    }
+}
 
 template <std::size_t BUFFER_SIZE = (4 * KB)>
 struct pipe {
     using buffer_type = vb::buffer_type<BUFFER_SIZE>;
     using enum io_direction;
 
-    template <io_direction DIR>
-    static constexpr auto not_for = DIR == READ? WRITE : DIR == WRITE ? READ : BOTH;
-
 private:
     template <io_direction DIR>
-    static constexpr auto idx = DIR == READ ? 0 : 1; // index
+    static constexpr auto IDX =
+        DIR == READ
+        ? 0 
+        : 1; // index
 
     std::array<int,2> file_descriptors{-1,-1};
     buffer_type buffer;
@@ -62,10 +73,10 @@ private:
     constexpr io_direction direction() const 
     {
         io_direction result = NONE;
-        if (file_descriptors[0] > 0) {
+        if (file_descriptors[IDX<READ>] > 0) {
             result = READ;
         }
-        if (file_descriptors[1] > 0) {
+        if (file_descriptors[IDX<WRITE>] > 0) {
             result = result | WRITE;
         }
         return result;
@@ -84,7 +95,7 @@ private:
             return read_size;
         }
 
-        read_size = sys::read(file_descriptors[idx<READ>], data, size);
+        read_size = sys::read(file_descriptors[IDX<READ>], data, size);
 
         if (read_size == 0) {
             close<READ>();
@@ -97,7 +108,9 @@ private:
         return read_size;
     };
 
-    auto buffer_load() {
+    auto buffer_load()
+        -> long 
+    {
         return buffer.load([this](char* data, std::size_t size) { return buffer_load(data, size); });
     }
 
@@ -110,7 +123,6 @@ private:
         auto new_fd = sys::dup2(to_fd, updated_fd);
 
         if (to_fd > 2) { // close original fd if it's not std_in, std_out or std_err.
-            std::cerr << "Closing " << to_fd << "\n";
             sys::close(to_fd);
         }
 
@@ -118,11 +130,13 @@ private:
     }
 
 public:
+    using expect_string = std::expected<std::string, std::error_code>;
+    using unexpected = std::unexpected<std::error_code>;
+
     template <io_direction DIR>
     void redirect(int fd)
     {
-        set_direction<DIR>();
-        redirect_fd(file_descriptors[idx<DIR>], fd);
+        redirect_fd(file_descriptors[IDX<DIR>], fd);
     }
 
     // TODO: Support for writting.
@@ -144,7 +158,7 @@ public:
     template <io_direction DIR>
     void close()
     {
-        sys::close(idx<DIR>);
+        sys::close(IDX<DIR>);
     }
 
     void close_all()
@@ -164,8 +178,8 @@ public:
             throw std::logic_error("Set direction for BOTH is meanless");
         }
 
-        sys::close(file_descriptors[idx<inverse_direction<DIR>>]);
-        file_descriptors[idx<inverse_direction<DIR>>] = -1;
+        sys::close(file_descriptors[IDX<!DIR>]);
+        file_descriptors[IDX<!DIR>] = -1;
     }
 
     template <io_direction DIR> 
@@ -175,11 +189,12 @@ public:
     }
 
     bool closed() const {
-        return (is<READ>() && file_descriptors[0] == -1) && (is<WRITE>() && file_descriptors[1] == -1);
+        return (is<READ>()  && file_descriptors[IDX<READ>] == -1)
+            && (is<WRITE>() && file_descriptors[IDX<WRITE>] == -1);
     }
 
     bool has_data() const {
-        return buffer.has_data();
+        return (buffer.has_data());
     }
 
     template <parse::can_be_outstreamed... DATA_Ts>
@@ -187,25 +202,27 @@ public:
     {
         for (auto str : std::array{ parse::to_string(data)... })
         {
-            sys::write(file_descriptors[idx<WRITE>], str.data(), str.size());
-            sys::write(file_descriptors[idx<WRITE>], "\n", 1);
+            sys::write(file_descriptors[IDX<WRITE>], str.data(), str.size());
+            sys::write(file_descriptors[IDX<WRITE>], "\n", 1);
         }
     }
 
-    std::expected<std::string, std::error_code> operator()()
+    expect_string operator()()
     {
-        std::string result;
+        auto result = std::string();
 
         while (result.size() == 0 && result.back() != '\n')
         {
-            if (!has_data() && !buffer_load())
+            if (!has_data())
             {
-                break;
+                return std::unexpected{ std::error_code(ENODATA, std::system_category()) };
             }
 
+            buffer_load();
             result += buffer.unload_line();
         }
-        return result;
+
+        return expect_string{result};
     }
 
     pipe()
@@ -217,8 +234,7 @@ public:
     pipe(pipe&& other) noexcept :
         file_descriptors{other.file_descriptors}
     {
-        file_descriptors[0] = -1;
-        file_descriptors[1] = -1;
+        other.file_descriptors = { -1, -1};
     }
 
     pipe& operator=(const pipe&) = delete;
