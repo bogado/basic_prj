@@ -130,7 +130,7 @@ template <std::same_as<poll_arg>... Ts>
 auto poll(std::chrono::milliseconds timeout, Ts... fd_s)
 {
     std::array<struct pollfd, sizeof...(Ts)> pollfds {fd_s...};
-    static auto poll = throw_on_error<struct pollfd*, std::size_t, int>("poll", ::poll);
+    static auto poll = throw_on_error<struct pollfd*, nfds_t, int>("poll", ::poll);
 
     poll(pollfds.data(), pollfds.size(), static_cast<int>(timeout.count()));
     std::array<short, sizeof...(Ts)> result;
