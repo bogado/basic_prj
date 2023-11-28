@@ -5,6 +5,26 @@
 
 #include <iostream>
 
+namespace Catch {
+
+template<>
+struct StringMaker<vb::pipe<>::expect_string>
+{
+    static inline std::string convert(vb::pipe<>::expect_string expected_str)
+    {
+        static constexpr auto quoted = [](std::string a) {
+            auto quote = std::string("\"");
+            return a.insert(0, quote) + quote;
+        };
+        return expected_str
+            ? quoted(expected_str.value())
+            : std::string("Ø → Fail");
+    }
+};
+
+}
+
+
 struct save_fd {
     int old_fd = -1;
     int fd = -1;
