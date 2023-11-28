@@ -226,7 +226,9 @@ public:
                 return std::unexpected{ std::error_code(ENODATA, std::system_category()) };
             }
 
-            buffer_load();
+            if (!buffer.has_data() || can_be_read()) {
+                buffer_load();
+            }
             result += buffer.unload_line();
         }
 
