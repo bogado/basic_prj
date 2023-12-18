@@ -213,6 +213,101 @@ constexpr inline auto write   = throw_on_error<call_type::ERRNO, int, const void
 constexpr inline auto close   = throw_on_error<call_type::ERRNO, int>                          ("close",  ::close);
 constexpr inline auto open    = throw_on_error<call_type::ERRNO, const char*, int>             ("open",   ::open);
 
+class spawn {
+    posix_spawn_file_actions_t file_actions{};
+    posix_spawnattr_t    attributes{};
+
+    static constexpr auto posix_spawn {
+        throw_on_error<
+            call_type::RETURN_ERRNO,
+            ::pid_t*,
+            const char*,
+            const posix_spawn_file_actions_t*,
+            const posix_spawnattr_t*,
+            char * const *,
+            char * const *
+       >("posix_spawn", ::posix_spawn)
+    };
+
+    constexpr static auto spawn_file_actions_init{
+        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*>("posix_spawn_file_actions_init", ::posix_spawn_file_actions_init)
+    };
+    constexpr static auto spawn_file_actions_destroy{
+        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*>("posix_spawn_file_actions_destroy", ::posix_spawn_file_actions_destroy)
+    };
+    constexpr static auto spawn_file_actions_addchdir{
+        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*, const char *>("posix_spawn_file_actions_addchdir", ::posix_spawn_file_actions_addchdir_np)
+    };
+    constexpr static auto spawn_file_actions_addclose{
+        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*, int>("posix_spawn_file_actions_addclose", ::posix_spawn_file_actions_addclose)
+    };
+    constexpr static auto spawn_file_actions_adddup2{
+        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*, int, int>("posix_spawn_file_actions_adddup2", ::posix_spawn_file_actions_adddup2)
+    };
+
+    constexpr static auto spawnattr_init{
+        throw_on_error<call_type::RETURN_ERRNO, posix_spawnattr_t*>("posix_spawnattr_init", ::posix_spawnattr_init)
+    };
+    constexpr static auto spawnattr_destroy{
+        throw_on_error<call_type::RETURN_ERRNO, posix_spawnattr_t*>("posix_spawnattr_destroy", ::posix_spawnattr_destroy)
+    };
+
+public:
+
+    spawn(std::source_location source = std::source_location::current())
+    {
+        spawn_file_actions_init(&file_actions, source); 
+        spawnattr_init(&attributes, source);
+    }
+
+    spawn(const spawn&)            = delete;
+    spawn(spawn&&)                 = delete;
+    spawn& operator=(const spawn&) = delete;
+    spawn& operator=(spawn&&)      = delete;
+
+    ~spawn()
+    {
+        spawn_file_actions_destroy(&file_actions);
+        spawnattr_destroy(&file_actions);
+    }
+
+    void cwd(fs::path dir, std::source_location source = std::source_location::current()) {
+        spawn_file_actions_addchdir(&file_actions, dir.native().c_str(), source);
+    }
+
+    void setup_dup2(int fromFd, int toFd, std::source_location source = std::source_location::current()) {
+        spawn_file_actions_adddup2(&file_actions, fromFd, toFd, source);
+    }
+
+    void add_close(int fd, std::source_location source = std::source_location::current()) {
+        spawn_file_actions_addclose(&file_actions, fd, source);
+    }
+
+    void move_fd(int fromFd, int toFd, std::source_location source = std::source_location::current()) {
+        setup_dup2(fromFd, toFd, source);
+        add_close(fromFd, source);
+    }
+
+    int operator()(fs::path exec, is_arguments_type auto args, std::source_location source = std::source_location::current())
+    {
+        pid_t pid{-1};
+        auto c_args = make_c_array(args);
+        posix_spawn(&pid, exec.native().c_str(), &file_actions, &attributes, c_args.data(), nullptr, source); 
+        return pid;
+    }
+
+    int operator()(fs::path exec, is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
+    {
+        pid_t pid{-1};
+        auto c_args = make_c_array(args);
+        auto c_env = make_c_array(env);
+        auto executable = exec.native();
+        posix_spawn(&pid, executable.c_str() , &file_actions, &attributes, c_args.data(), c_env.data(), source); 
+        return pid;
+    }
+
+};
+
 }}
 
 #endif
