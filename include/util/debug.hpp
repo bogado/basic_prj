@@ -68,23 +68,20 @@ struct debugger {
             current.append(out.str());
         } else if constexpr ( std::same_as<FIRST, char* const *>) {
             auto p = first;
-            while (p != nullptr) {
+            while (p != nullptr && &p != nullptr) {
                 (*this)(*p);
                 p++;
+            }
+        } else if constexpr (std::convertible_to<FIRST, const char*>) {
+            if (first == nullptr) {
+                current.append("«nullptr»");
+            } else {
+                current.append(first);
             }
         } else if constexpr (is_string_type<FIRST>) {
             current.append(first); 
         } else if constexpr (requires { {std::to_string(first)}; }) {
             current.append(std::to_string(first));
-        } else if constexpr (std::convertible_to<FIRST, const char*>) {
-            if (first == nullptr) {
-                current.append("«nullptr»");
-            } else {
-                current.append("\"");
-                current.append(first);
-                current.append("\"");
-            }
-        } else {
             current.append("«?»");
         }
         if constexpr (sizeof...(ARGS) > 0) {
