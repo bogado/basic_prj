@@ -6,11 +6,9 @@
 #include <array>
 #include <cerrno>
 #include <cstdlib>
-#include <exception>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
-#include <new>
 #include <optional>
 #include <ranges>
 #include <source_location>
@@ -27,7 +25,6 @@
 #include <poll.h>
 
 #include "debug.hpp"
-#include "util/string.hpp"
 
 namespace vb {
 
@@ -60,7 +57,9 @@ constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::a
 
         auto result = invocable(args...);
         using result_t = decltype(result);
-        debug(name, "( "); (debug(args, " "), ...); debug.log_to(std::cerr, " ) = ", result);
+        debug(name, "( ");
+        (debug(args, " "), ...);
+        debug.log_to(std::cerr, " ) = ", result);
 
         int result_error = 0;
         if constexpr (TYPE == call_type::ERRNO) {
@@ -102,9 +101,9 @@ requires(ARG_TYPE args)
 };
 
 struct Args {
-    using c_holder = std::vector<char * const *>;
+    using c_holder = std::vector<char *>;
     std::vector<std::string> data_source;
-    mutable c_holder c_data;
+    c_holder c_data;
 
     template <is_arguments_type ARG_T>
     Args(const ARG_T& args) :
@@ -120,7 +119,7 @@ struct Args {
         std::ranges::copy(data_source | std::views::all | std::views::transform([](auto& val) { return val.data(); }), std::back_inserter(c_data));
     }
 
-    auto get_c_pointer()
+    auto get_c_pointer() const
     {
         return c_data.data();
     }
@@ -131,7 +130,7 @@ struct Args {
         update_c();
     }
 
-    auto data() 
+    auto data() const
     {
         return c_data.data();
     }
@@ -146,7 +145,7 @@ auto exec(fs::path exe, is_arguments_type auto arguments, std::source_location s
 
     debug.log_to(std::cerr, "exec( ", args_arr, ") ");
 
-    return exec(executable.c_str(), args_arr.data_source(), source);
+    return exec(executable.c_str(), args_arr.data(), source);
 }
 
 inline auto pipe(std::source_location source = std::source_location::current())
@@ -268,7 +267,7 @@ public:
     ~spawn()
     {
         spawn_file_actions_destroy(&file_actions);
-        spawnattr_destroy(&file_actions);
+        spawnattr_destroy(&attributes);
     }
 
     void cwd(fs::path dir, std::source_location source = std::source_location::current()) {
@@ -291,7 +290,7 @@ public:
     int operator()(fs::path exec, is_arguments_type auto args, std::source_location source = std::source_location::current())
     {
         pid_t pid{-1};
-        auto c_args = make_c_array(args);
+        auto c_args = Args(args);
         posix_spawn(&pid, exec.native().c_str(), &file_actions, &attributes, c_args.data(), nullptr, source); 
         return pid;
     }
@@ -299,8 +298,8 @@ public:
     int operator()(fs::path exec, is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
     {
         pid_t pid{-1};
-        auto c_args = make_c_array(args);
-        auto c_env = make_c_array(env);
+        auto c_args = Args(args);
+        auto c_env = Args(env);
         auto executable = exec.native();
         posix_spawn(&pid, executable.c_str() , &file_actions, &attributes, c_args.data(), c_env.data(), source); 
         return pid;
