@@ -10,6 +10,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <type_traits>
+#include <ranges>
 
 #include "string.hpp"
 
@@ -57,12 +58,34 @@ struct debugger {
         updatepid();
         if constexpr (std::ranges::range<FIRST> && !is_string_type<FIRST>) {
             std::stringstream out{};
-            std::copy(std::begin(first), std::end(first), std::ostream_iterator<std::ranges::range_value_t<FIRST>>(out, ", "));
+            std::ranges::copy(first | std::views::filter([](const auto& value) {
+                if constexpr (std::is_pointer_v<std::remove_reference_t<decltype(value)>>) {
+                    return value != nullptr;
+                } else {
+                    return true;
+                }
+            }), std::ostream_iterator<std::ranges::range_value_t<FIRST>>(out, ", "));
             current.append(out.str());
+        } else if constexpr ( std::same_as<FIRST, char* const *>) {
+            auto p = first;
+            while (p != nullptr) {
+                (*this)(*p);
+                p++;
+            }
         } else if constexpr (is_string_type<FIRST>) {
             current.append(first); 
         } else if constexpr (requires { {std::to_string(first)}; }) {
             current.append(std::to_string(first));
+        } else if constexpr (std::convertible_to<FIRST, const char*>) {
+            if (first == nullptr) {
+                current.append("«nullptr»");
+            } else {
+                current.append("\"");
+                current.append(first);
+                current.append("\"");
+            }
+        } else {
+            current.append("«?»");
         }
         if constexpr (sizeof...(ARGS) > 0) {
             return (*this)(args...);
