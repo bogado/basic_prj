@@ -38,10 +38,10 @@ private:
     template <std::size_t SIZE>
     auto execute(fs::path exe, std::array<std::string, SIZE> args, fs::path cwd, std::source_location source = std::source_location::current())
     {
-        sys::spawn execution{source};
-        execution.move_fd(std_out.get_fd<io_direction::WRITE>(), 1);
-        execution.cwd(cwd);
-        execution(exe, args);
+        sys::spawn execution_spawn{source};
+        execution_spawn.move_fd(std_out.get_fd<io_direction::WRITE>(), 1);
+        execution_spawn.cwd(cwd);
+        execution_spawn(exe, args);
     }
 
 public:
