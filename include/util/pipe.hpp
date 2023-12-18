@@ -142,6 +142,12 @@ public:
     using unexpected = std::unexpected<std::error_code>;
 
     template <io_direction DIR>
+    int get_fd() const
+    {
+        return file_descriptors[IDX<DIR>];
+    }
+    
+    template <io_direction DIR>
     void redirect(int fd)
     {
         redirect_fd(file_descriptors[IDX<DIR>], fd);
@@ -226,7 +232,8 @@ public:
                 return std::unexpected{ std::error_code(ENODATA, std::system_category()) };
             }
 
-            if (!buffer.has_data() || can_be_read()) {
+            if (!buffer.has_data() || can_be_read())
+            {
                 buffer_load();
             }
             result += buffer.unload_line();

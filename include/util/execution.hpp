@@ -7,6 +7,7 @@
 
 #include <array>
 #include <concepts>
+#include <filesystem>
 #include <string>
 #include <atomic>
 
@@ -35,30 +36,25 @@ private:
     }
 
     template <std::size_t SIZE>
-    auto execute(fs::path exe, std::array<std::string, SIZE> args, std::source_location source = std::source_location::current())
+    auto execute(fs::path exe, std::array<std::string, SIZE> args, fs::path cwd, std::source_location source = std::source_location::current())
     {
-        if(pid == 0) {
-            debug("About to exec at child: ", exe.string(), ", ", args);
-            std_out.redirect_out();
-            return sys::exec(exe, args, source);
-        } else {
-            debug("closing read side on parent");
-            std_out.set_direction<pipe_t::READ>();
-        }
-        return 0;
+        sys::spawn execution{source};
+        execution.move_fd(std_out.get_fd<io_direction::WRITE>(), 1);
+        execution.cwd(cwd);
+        execution(exe, args);
     }
 
 public:
     template <std::size_t SIZE_T>
-    execution(fs::path exe, std::array<std::string, SIZE_T> args, std::source_location source = std::source_location::current()) :
+    execution(fs::path exe, std::array<std::string, SIZE_T> args, fs::path cwd = fs::current_path(), std::source_location source = std::source_location::current()) :
         std_out{},
-        pid(sys::fork())
+        pid()
     {
-        execute(exe, std::move(args), source);
+        execute(exe, std::move(args), cwd, source);
     }
 
     execution(fs::path exe, std::source_location source = std::source_location()) :
-        execution(exe, std::array<std::string, 0>{}, source)
+        execution(exe, std::array<std::string, 0>{}, fs::current_path(), source)
     {}
 
     auto stdout_lines()
