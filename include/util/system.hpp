@@ -12,6 +12,7 @@
 #include <optional>
 #include <ranges>
 #include <source_location>
+#include <stdexcept>
 #include <string>
 #include <system_error>
 #include <span>
@@ -34,7 +35,7 @@ namespace sys {
 
 enum class call_type {
     ERRNO,
-    RETURN_ERRNO,
+    SPAWN,
     SIGNAL
 };
 
@@ -42,18 +43,6 @@ template <call_type TYPE, typename... ARGS, typename INVOCABLE, std::size_t IGNO
 requires std::invocable<INVOCABLE, ARGS...>
 constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::array<int, IGNORED_SIZE> ignored = {}) {
     return [=](ARGS... args, std::source_location source = std::source_location::current()) {
-        auto error = [=](auto err) { 
-            auto code = std::error_code(err, std::system_category());
-            return std::system_error(code, 
-                std::string(name) +
-                " call_type::ERRNO = " + std::to_string(errno) +
-                " ⇒ " +
-                code.message() +
-                " at " +
-                source.function_name() +
-                " → " +
-                source.file_name() + ":" + std::to_string(source.line()) + ":" + std::to_string(source.column()));
-        };
 
         auto result = invocable(args...);
         using result_t = decltype(result);
@@ -61,32 +50,43 @@ constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::a
         (debug(args, " "), ...);
         debug.log_to(std::cerr, " ) = ", result);
 
-        int result_error = 0;
-        if constexpr (TYPE == call_type::ERRNO) {
-            if (result_error == -1) {
-                result_error = errno;
+        auto throw_error = [&](auto err) -> result_t {
+            if constexpr (IGNORED_SIZE != 0) { 
+                if (std::find(std::begin(ignored), std::end(ignored), errno) != std::end(ignored)) {
+                    return result;
+                }
             }
-        } else if constexpr (TYPE == call_type::RETURN_ERRNO) {
-            result_error = result;
+
+            std::string result_msg{};
+            if constexpr (requires { std::to_string(result); }) {
+                result_msg = " → " + std::to_string(result);
+            }
+
+            auto code = std::error_code(err, std::system_category());
+            throw std::system_error(code, 
+             std::string(name) + result_msg +
+             " call_type::ERRNO = " + std::to_string(errno) +
+             " ⇒ " +
+             code.message() +
+             " at " +
+             source.function_name() +
+             " → " +
+             source.file_name() + ":" + std::to_string(source.line()) + ":" + std::to_string(source.column())
+             );
+            return result;
+        };
+
+        if constexpr (TYPE == call_type::ERRNO) {
+            if (result == -1) {
+                return throw_error(errno);
+            }
+        } else if constexpr (TYPE == call_type::SPAWN) {
+            if (result != 0) {
+                return throw_error(errno);
+            }
         } else if constexpr (TYPE == call_type::SIGNAL) {
             if (result == SIG_ERR) {
-                result_error = errno;
-            }
-        }
-
-        if constexpr (IGNORED_SIZE != 0) {
-            if (std::find(std::begin(ignored), std::end(ignored), errno) != std::end(ignored)) {
-                return result;
-            }
-        }
-        if constexpr (std::integral<result_t>)
-        {
-            if (result == -1) {
-                throw error(errno);
-            }
-        } else {
-            if (errno != 0) {
-                throw error(errno);
+                return throw_error(errno);
             }
         }
         return result;
@@ -106,6 +106,15 @@ struct Args {
     c_holder c_data;
 
     template <is_arguments_type ARG_T>
+    Args(fs::path exe, const ARG_T& args) :
+        data_source{ std::begin(args), std::end(args) },
+        c_data{}
+    {
+        data_source.insert(std::begin(data_source), exe.native());
+        update_c();
+    }
+
+    template <is_arguments_type ARG_T>
     Args(const ARG_T& args) :
         data_source{ std::begin(args), std::end(args) },
         c_data{}
@@ -117,9 +126,10 @@ struct Args {
     {
         c_data.clear();
         std::ranges::copy(data_source | std::views::all | std::views::transform([](auto& val) { return val.data(); }), std::back_inserter(c_data));
+        c_data.push_back(nullptr);
     }
 
-    auto get_c_pointer() const
+    auto get_c_pointer() const noexcept
     {
         return c_data.data();
     }
@@ -130,9 +140,17 @@ struct Args {
         update_c();
     }
 
-    auto data() const
+    auto data() const noexcept
     {
         return c_data.data();
+    }
+
+    auto arg0() const
+    {
+        if (c_data.empty()) {
+            throw(std::invalid_argument("No argv[0]"));
+        }
+        return c_data[0];
     }
 };
 
@@ -218,7 +236,7 @@ class spawn {
 
     static constexpr auto posix_spawn {
         throw_on_error<
-            call_type::RETURN_ERRNO,
+            call_type::SPAWN,
             ::pid_t*,
             const char*,
             const posix_spawn_file_actions_t*,
@@ -229,27 +247,36 @@ class spawn {
     };
 
     constexpr static auto spawn_file_actions_init{
-        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*>("posix_spawn_file_actions_init", ::posix_spawn_file_actions_init)
+        throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*>("posix_spawn_file_actions_init", ::posix_spawn_file_actions_init)
     };
     constexpr static auto spawn_file_actions_destroy{
-        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*>("posix_spawn_file_actions_destroy", ::posix_spawn_file_actions_destroy)
+        throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*>("posix_spawn_file_actions_destroy", ::posix_spawn_file_actions_destroy)
     };
     constexpr static auto spawn_file_actions_addchdir{
-        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*, const char *>("posix_spawn_file_actions_addchdir", ::posix_spawn_file_actions_addchdir_np)
+        throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, const char *>("posix_spawn_file_actions_addchdir", ::posix_spawn_file_actions_addchdir_np)
     };
     constexpr static auto spawn_file_actions_addclose{
-        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*, int>("posix_spawn_file_actions_addclose", ::posix_spawn_file_actions_addclose)
+        throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, int>("posix_spawn_file_actions_addclose", ::posix_spawn_file_actions_addclose)
     };
     constexpr static auto spawn_file_actions_adddup2{
-        throw_on_error<call_type::RETURN_ERRNO, posix_spawn_file_actions_t*, int, int>("posix_spawn_file_actions_adddup2", ::posix_spawn_file_actions_adddup2)
+        throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, int, int>("posix_spawn_file_actions_adddup2", ::posix_spawn_file_actions_adddup2)
     };
 
     constexpr static auto spawnattr_init{
-        throw_on_error<call_type::RETURN_ERRNO, posix_spawnattr_t*>("posix_spawnattr_init", ::posix_spawnattr_init)
+        throw_on_error<call_type::SPAWN, posix_spawnattr_t*>("posix_spawnattr_init", ::posix_spawnattr_init)
     };
+
     constexpr static auto spawnattr_destroy{
-        throw_on_error<call_type::RETURN_ERRNO, posix_spawnattr_t*>("posix_spawnattr_destroy", ::posix_spawnattr_destroy)
+        throw_on_error<call_type::SPAWN, posix_spawnattr_t*>("posix_spawnattr_destroy", ::posix_spawnattr_destroy)
     };
+
+    auto do_spawn(char *cmd, char * const * args, char * const * env, std::source_location source = std::source_location::current())
+    {
+        pid_t result;
+        posix_spawn(&result, cmd, &file_actions, &attributes, args, env, source); 
+        return result;
+    }
+    
 
 public:
 
@@ -287,22 +314,31 @@ public:
         add_close(fromFd, source);
     }
 
+    int operator()(is_arguments_type auto args, std::source_location source = std::source_location::current())
+    {
+        auto c_args = Args(args);
+        return do_spawn(c_args.arg0(), c_args.data(), nullptr, source); 
+    }
+
+    int operator()(is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
+    {
+        auto c_args = Args(args);
+        auto c_env = Args(env);
+        return do_spawn(c_args.arg0(), c_args.data(), c_env.data(), source);
+    }
+
     int operator()(fs::path exec, is_arguments_type auto args, std::source_location source = std::source_location::current())
     {
-        pid_t pid{-1};
-        auto c_args = Args(args);
-        posix_spawn(&pid, exec.native().c_str(), &file_actions, &attributes, c_args.data(), nullptr, source); 
-        return pid;
+        auto c_args = Args(exec, args);
+        return do_spawn(c_args.arg0(), c_args.data(), nullptr, source);
     }
 
     int operator()(fs::path exec, is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
     {
-        pid_t pid{-1};
-        auto c_args = Args(args);
+        auto c_args = Args(exec, args);
         auto c_env = Args(env);
         auto executable = exec.native();
-        posix_spawn(&pid, executable.c_str() , &file_actions, &attributes, c_args.data(), c_env.data(), source); 
-        return pid;
+        return do_spawn(c_args.arg0(), c_args.data(), c_env.data(), source);
     }
 
 };

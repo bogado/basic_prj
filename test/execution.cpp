@@ -23,14 +23,14 @@ using namespace std::literals;
 
 TEST_CASE("Execution of external command", "[execute]")
 {
-    auto handler = vb::execution(vb::fs::path("/usr/bin/find"sv), std::array{std::string{vb::fs::path(test_dir) / "test_data"}, "-printf"s, "%f"s});
+    auto handler = vb::execution(vb::fs::path("/usr/bin/find"sv), std::array{std::string{vb::fs::path(test_dir) / "test_data"}, "-printf"s, "%f\\n"s});
     auto expectation = expected.begin();
     for (auto line : handler.stdout_lines()) {
-        REQUIRE(expectation != expected.end());
-        REQUIRE(*expectation == line);
+        CHECK(expectation != expected.end());
+        CHECK(*expectation == line);
         ++expectation;
     }
-    REQUIRE(std::distance(expectation, expected.end()) == 0);
+    CHECK(std::distance(expectation, expected.end()) == 0);
 
     REQUIRE(handler.wait() == 0);
 }

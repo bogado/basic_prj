@@ -36,22 +36,24 @@ private:
     }
 
     template <std::size_t SIZE>
-    auto execute(fs::path exe, std::array<std::string, SIZE> args, fs::path cwd, std::source_location source = std::source_location::current())
+    auto execute(fs::path exe,const std::array<std::string, SIZE>& args, fs::path cwd, std::source_location source = std::source_location::current())
     {
         sys::spawn execution_spawn{source};
-        execution_spawn.move_fd(std_out.get_fd<io_direction::WRITE>(), 1);
         execution_spawn.cwd(cwd);
-        execution_spawn(exe, args);
+        execution_spawn.setup_dup2(std_out.get_fd<io_direction::WRITE>(), 1);
+        execution_spawn.add_close(std_out.get_fd<io_direction::WRITE>());
+        execution_spawn.add_close(std_out.get_fd<io_direction::READ>());
+        auto result = execution_spawn(exe, args);
+        std_out.set_direction<io_direction::READ>();
+        return result;
     }
 
 public:
     template <std::size_t SIZE_T>
     execution(fs::path exe, std::array<std::string, SIZE_T> args, fs::path cwd = fs::current_path(), std::source_location source = std::source_location::current()) :
         std_out{},
-        pid()
-    {
-        execute(exe, std::move(args), cwd, source);
-    }
+        pid(execute(exe, std::move(args), cwd, source))
+    {}
 
     execution(fs::path exe, std::source_location source = std::source_location()) :
         execution(exe, std::array<std::string, 0>{}, fs::current_path(), source)
