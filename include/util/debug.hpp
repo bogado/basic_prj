@@ -68,8 +68,10 @@ struct debugger {
             current.append(out.str());
         } else if constexpr ( std::same_as<FIRST, char* const *>) {
             auto p = first;
-            while (p != nullptr && &p != nullptr) {
+            while (p != nullptr && *p != nullptr) {
+                (*this)(" \'");
                 (*this)(*p);
+                (*this)("\' ");
                 p++;
             }
         } else if constexpr (std::convertible_to<FIRST, const char*>) {
