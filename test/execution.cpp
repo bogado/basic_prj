@@ -15,9 +15,9 @@ static constexpr auto test_dir = []() {
 using namespace std::literals;
 
 static constexpr auto expected = std::array{
-    "test_data"sv,
-    "123"sv,
-    "abc"sv };
+    "test_data\n"sv,
+    "123\n"sv,
+    "abc\n"sv };
 
 using namespace std::literals;
 
