@@ -1,0 +1,5 @@
+= Basic project template.
+Victor Bogado da Silva Lins <victor@bogado.net>
+
+== Starting point for C++ project
+
