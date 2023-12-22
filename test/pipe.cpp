@@ -1,3 +1,4 @@
+#include "test_data/line_data.hpp"
 #include <catch2/catch_all.hpp>
 
 #include <util/pipe.hpp>
@@ -86,3 +87,31 @@ TEST_CASE("pipe writing and reading", "[pipe][generator][buffer]")
         REQUIRE_FALSE(pipe_test.has_data());
     }
 }
+
+TEST_CASE("Read loop", "[pipe][buffer][generator]")
+{
+    vb::pipe pipe_test{};
+
+    auto add_it = std::begin(data::add);
+    auto expected_it = std::begin(data::lines);
+    auto prev_ex = std::string("");
+    while (add_it != std::end(data::add) || expected_it != std::end(data::lines))
+    {
+        INFO("Buffer : " << pipe_test);
+        INFO("Next data: " << *add_it);
+        INFO("Prev Expectation: " << prev_ex);
+        INFO("Next Expectation: " << *expected_it);
+        if (!pipe_test.has_data()) {
+            REQUIRE(add_it != std::end(data::add));
+            pipe_test(*add_it);
+            add_it++;
+        } else {
+            prev_ex = *expected_it;
+            REQUIRE(expected_it != std::end(data::lines));
+            REQUIRE(pipe_test() == prev_ex);
+            expected_it++;
+        }
+    }
+}
+
+

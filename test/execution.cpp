@@ -15,15 +15,16 @@ static constexpr auto test_dir = []() {
 using namespace std::literals;
 
 static constexpr auto expected = std::array{
-    "test_data\n"sv,
     "123\n"sv,
-    "abc\n"sv };
+    "abc\n"sv,
+    "line_data.hpp\n"sv
+};
 
 using namespace std::literals;
 
-TEST_CASE("Execution of external command", "[execute]")
+TEST_CASE("Execution of external command", "[execute][pipe][buffer][generator]")
 {
-    auto handler = vb::execution(vb::fs::path("/usr/bin/find"sv), std::array{std::string{vb::fs::path(test_dir) / "test_data"}, "-printf"s, "%f\\n"s});
+    auto handler = vb::execution(vb::fs::path("/bin/ls"sv), std::array{std::string{vb::fs::path(test_dir) / "test_data"}});
     auto expectation = expected.begin();
     for (auto line : handler.stdout_lines()) {
         CHECK(expectation != expected.end());

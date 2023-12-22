@@ -37,7 +37,7 @@ vb::generator<unsigned> primes(unsigned start)
     }
 }
 
-TEST_CASE("Generator", "[Prime generator]")
+TEST_CASE("Prime generator", "[Prime][generator]")
 {
     constexpr std::array CHECK {
         2u, 3u, 5u, 7u, 11u, 13u, 17u, 19u, 23u, 29u, 31u, 37u,
@@ -59,5 +59,13 @@ TEST_CASE("Generator", "[Prime generator]")
             break;
         }
     }
+
+    BENCHMARK_ADVANCED("Prime generator")(Catch::Benchmark::Chronometer meter) {
+        auto prime_gen = primes(2).begin();
+        meter.measure([&](){
+            ++prime_gen;
+            return *prime_gen;
+        });
+    };
 }
 
