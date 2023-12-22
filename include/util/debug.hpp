@@ -84,6 +84,7 @@ struct debugger {
             current.append(first); 
         } else if constexpr (requires { {std::to_string(first)}; }) {
             current.append(std::to_string(first));
+        } else {
             current.append("«?»");
         }
         if constexpr (sizeof...(ARGS) > 0) {
