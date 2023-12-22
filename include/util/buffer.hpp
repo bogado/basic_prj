@@ -6,6 +6,7 @@
 #include <string>
 #include <iterator>
 #include <ranges>
+#include <iostream>
 
 namespace vb {
 
@@ -31,7 +32,7 @@ private:
     iterator used_begin = data.begin();
     iterator used_end   = data.begin();
 
-    inline constexpr bool valid_equal(char* what, char value) {
+    inline constexpr bool valid_equal(iterator what, char value) {
         return what != used_end && *what == value;
     }
 public:
@@ -83,6 +84,11 @@ public:
         }
 
         return result;
+    }
+
+    friend std::ostream& operator<<(std::ostream& out, const buffer_type& self) {
+        auto buffer_rep = std::ranges::subrange(self.used_begin, self.used_end) | std::views::transform([](auto ch) { return ch == '\n' ? '.':ch;});
+        return out << "Buffer«" << std::string(std::begin(buffer_rep), std::end(buffer_rep)) << "»";
     }
 };
 

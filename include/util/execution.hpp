@@ -17,12 +17,11 @@ namespace fs = std::filesystem;
 
 struct execution {
 private:
-    using pipe_t = pipe<>;
-    pipe<> std_out;
+    pipe std_out;
     pid_t pid;
     sys::status_type current_status{};
 
-    template <pipe_t execution::* INPUT>
+    template <pipe execution::* INPUT>
     generator<std::string> lines() {
         auto& input = this->*INPUT;
 

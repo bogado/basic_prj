@@ -7,10 +7,12 @@
 #include "buffer.hpp"
 #include "./converters.hpp"
 
+#include <concepts>
 #include <utility>
 #include <array>
 #include <expected>
 #include <cstddef>
+#include <iostream>
 
 #include <unistd.h>
 
@@ -56,7 +58,7 @@ operator not(io_direction dir)
 }
 
 template <std::size_t BUFFER_SIZE = (4 * KB)>
-struct pipe {
+struct pipe_base {
     using buffer_type = vb::buffer_type<BUFFER_SIZE>;
     using enum io_direction;
 
@@ -172,7 +174,12 @@ public:
     template <io_direction DIR>
     void close()
     {
-        sys::close(IDX<DIR>);
+        auto& fd = file_descriptors[IDX<DIR>];
+        if (fd == -1) {
+            return;
+        }
+        sys::close(fd);
+        fd = -1;
     }
 
     void close_all()
@@ -192,8 +199,7 @@ public:
             throw std::logic_error("Set direction for BOTH is meanless");
         }
 
-        sys::close(file_descriptors[IDX<!DIR>]);
-        file_descriptors[IDX<!DIR>] = -1;
+        close<!DIR>();
     }
 
     template <io_direction DIR> 
@@ -217,7 +223,9 @@ public:
         for (auto str : std::array{ parse::to_string(data)... })
         {
             sys::write(file_descriptors[IDX<WRITE>], str.data(), str.size());
-            sys::write(file_descriptors[IDX<WRITE>], "\n", 1);
+            if (str.back() != '\n') {
+                sys::write(file_descriptors[IDX<WRITE>], "\n", 1);
+            }
         }
     }
 
@@ -242,30 +250,36 @@ public:
         return expect_string{result};
     }
 
-    pipe()
-    {
-        ::pipe(file_descriptors.data());
-    }
+    pipe_base() :
+        file_descriptors(sys::pipe())
+    {}
 
-    pipe(const pipe&) = delete;
-    pipe(pipe&& other) noexcept :
+    pipe_base(const pipe_base&) = delete;
+    pipe_base(pipe_base&& other) noexcept :
         file_descriptors{other.file_descriptors}
     {
         other.file_descriptors = { -1, -1};
     }
 
-    pipe& operator=(const pipe&) = delete;
-    pipe& operator=(pipe&& other) noexcept {
+    pipe_base& operator=(const pipe_base&) = delete;
+    pipe_base& operator=(pipe_base&& other) noexcept {
         close();
         std::swap(file_descriptors, other.file_descriptors);
     }
 
-    ~pipe()
+    ~pipe_base()
     {
         close_all();
     }
+
+    friend std::ostream& operator<<(std::ostream& out, const pipe_base& self) {
+        return out << "Pipe{" << self.file_descriptors[0] << ", " << self.file_descriptors[1] << ", " << self.buffer << "}";
+    }
 };
 
+using pipe = pipe_base<sys::PAGE_SIZE>;
+
+static_assert(std::same_as<std::ostream&, decltype(std::cout << std::declval<vb::pipe>())>);
 
 }
 

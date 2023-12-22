@@ -8,9 +8,9 @@
 namespace Catch {
 
 template<>
-struct StringMaker<vb::pipe<>::expect_string>
+struct StringMaker<vb::pipe::expect_string>
 {
-    static inline std::string convert(vb::pipe<>::expect_string expected_str)
+    static inline std::string convert(vb::pipe::expect_string expected_str)
     {
         static constexpr auto quoted = [](std::string a) {
             auto quote = std::string("\"");
@@ -46,7 +46,7 @@ struct save_fd {
     }
 };
 
-TEST_CASE("pipe redirection", "[pipe][buffer]")
+TEST_CASE("pipe redirection", "[pipe][generator][buffer]")
 {
     save_fd restore(2);
     vb::pipe pipe_test{};
@@ -64,7 +64,7 @@ TEST_CASE("pipe redirection", "[pipe][buffer]")
     REQUIRE_FALSE(pipe_test.has_data());
 }
 
-TEST_CASE("pipe writing and reading", "[pipe][buffer]")
+TEST_CASE("pipe writing and reading", "[pipe][generator][buffer]")
 {
     vb::pipe pipe_test{};
 
