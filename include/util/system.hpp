@@ -181,11 +181,11 @@ using status_type = std::optional<int>;
 inline auto wait_pid(pid_t pid, int option = 0, std::source_location source = std::source_location::current())
 -> status_type
 {
-    constexpr auto sys_waitpid = throw_on_error<call_type::ERRNO, pid_t, int*, int>("waitpid", ::waitpid, std::array{ ECHILD });
-    int status{0};
+    constexpr auto sys_waitpid = throw_on_error<call_type::ERRNO, pid_t, int*, int>("waitpid", ::waitpid, std::array{ EAGAIN });
+    int status{-1};
     int pid_r = sys_waitpid(pid, &status, option, source);
     if (pid_r != pid || !WIFEXITED(status)) {
-        return status_type{};
+        return status_type{0};
     }
     return WEXITSTATUS(status);
 }
