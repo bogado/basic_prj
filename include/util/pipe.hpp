@@ -63,11 +63,12 @@ struct pipe_base {
     using enum io_direction;
 
 private:
-    template <io_direction DIR>
-    static constexpr auto IDX =
-        DIR == READ
-        ? 0 
-        : 1; // index
+    static constexpr auto index(io_direction dir)
+    {
+        return dir == READ
+            ? 0u
+            : 1u;
+    }
 
     std::array<int,2> file_descriptors{-1,-1};
     buffer_type buffer;
@@ -75,10 +76,10 @@ private:
     constexpr io_direction direction() const 
     {
         io_direction result = NONE;
-        if (file_descriptors[IDX<READ>] > 0) {
+        if (file_descriptors[index(READ)] > 0) {
             result = READ;
         }
-        if (file_descriptors[IDX<WRITE>] > 0) {
+        if (file_descriptors[index(WRITE)] > 0) {
             result = result | WRITE;
         }
         return result;
@@ -97,7 +98,7 @@ private:
             return read_size;
         }
 
-        read_size = sys::read(file_descriptors[IDX<READ>], data, size);
+        read_size = sys::read(file_descriptors[index(READ)], data, size);
 
         if (read_size == 0) {
             close<READ>();
@@ -135,7 +136,7 @@ private:
     {
         using namespace std::literals;
         return (sys::poll(0ms, sys::poll_arg {
-            .fd = file_descriptors[IDX<READ>],
+            .fd = file_descriptors[index(READ)],
             .events = POLLIN})[0] & POLLIN) != 0;
     }
 
@@ -143,16 +144,21 @@ public:
     using expect_string = std::expected<std::string, std::error_code>;
     using unexpected = std::unexpected<std::error_code>;
 
-    template <io_direction DIR>
-    int get_fd() const
+    constexpr int get_fd(io_direction dir) const
     {
-        return file_descriptors[IDX<DIR>];
+        return file_descriptors.at(index(dir));
+    }
+
+    template <io_direction DIR>
+    constexpr int get_fd() const
+    {
+        return get_fd(index(DIR));
     }
     
     template <io_direction DIR>
     void redirect(int fd)
     {
-        redirect_fd(file_descriptors[IDX<DIR>], fd);
+        redirect_fd(file_descriptors[index(DIR)], fd);
     }
 
     // TODO: Support for writting.
@@ -171,15 +177,26 @@ public:
         redirect<WRITE>(2);
     }
 
+    void close(io_direction dir)
+    {
+        if (dir == io_direction::NONE) {
+            return;
+        }
+
+        if (dir == io_direction::BOTH) {
+            close_all();
+        }
+
+        auto& fd = file_descriptors.at(index(dir));
+
+        sys::close(fd);
+        fd = -1;
+    }
+
     template <io_direction DIR>
     void close()
     {
-        auto& fd = file_descriptors[IDX<DIR>];
-        if (fd == -1) {
-            return;
-        }
-        sys::close(fd);
-        fd = -1;
+        close(DIR);
     }
 
     void close_all()
@@ -192,14 +209,20 @@ public:
         }
     }
 
-    template <io_direction DIR>
-    void set_direction()
+    void set_direction(io_direction dir)
     {
-        if constexpr (DIR == BOTH) {
-            throw std::logic_error("Set direction for BOTH is meanless");
+        if (dir == BOTH || dir == NONE) {
+            throw std::logic_error("Set direction for NONE or BOTH is meanless");
         }
 
-        close<!DIR>();
+        close(!dir);
+    }
+
+    template <io_direction DIR>
+    requires(DIR != io_direction::BOTH && DIR != io_direction::NONE)
+    auto set_direction()
+    {
+        return set_direction(DIR);
     }
 
     template <io_direction DIR> 
@@ -209,8 +232,8 @@ public:
     }
 
     bool closed() const {
-        return (is<READ>()  && file_descriptors[IDX<READ>] == -1)
-            && (is<WRITE>() && file_descriptors[IDX<WRITE>] == -1);
+        return (is<READ>()  && file_descriptors[index(READ)] == -1)
+            && (is<WRITE>() && file_descriptors[index(WRITE)] == -1);
    }
 
     bool has_data() const {
@@ -222,9 +245,9 @@ public:
     {
         for (auto str : std::array{ parse::to_string(data)... })
         {
-            sys::write(file_descriptors[IDX<WRITE>], str.data(), str.size());
+            sys::write(file_descriptors[index(WRITE)], str.data(), str.size());
             if (str.back() != '\n') {
-                sys::write(file_descriptors[IDX<WRITE>], "\n", 1);
+                sys::write(file_descriptors[index(WRITE)], "\n", 1);
             }
         }
     }
@@ -255,6 +278,7 @@ public:
     {}
 
     pipe_base(const pipe_base&) = delete;
+
     pipe_base(pipe_base&& other) noexcept :
         file_descriptors{other.file_descriptors}
     {
