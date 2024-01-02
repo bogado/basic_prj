@@ -7,9 +7,9 @@
 
 #include <array>
 #include <concepts>
+#include <cstdint>
 #include <filesystem>
 #include <string>
-#include <atomic>
 
 namespace vb {
 
@@ -17,13 +17,24 @@ namespace fs = std::filesystem;
 
 struct execution {
 private:
-    pipe std_out;
+    static constexpr auto std_in  = std::uint8_t{0};
+    static constexpr auto std_out = std::uint8_t{1};
+    static constexpr auto std_err = std::uint8_t{2};
+
+    static constexpr auto directions = std::array{
+        io_direction::READ, 
+        io_direction::WRITE,
+        io_direction::WRITE
+    };
+
+    std::array <pipe, 3> pipes;
     pid_t pid;
     sys::status_type current_status{};
 
-    template <pipe execution::* INPUT>
+    template <std::size_t INPUT>
+    requires (INPUT >= 0 && INPUT < 3)
     generator<std::string> lines() {
-        auto& input = this->*INPUT;
+        auto& input = pipes[INPUT];
 
         while (input.has_data() || !current_status.has_value())
         {
@@ -39,18 +50,23 @@ private:
     {
         sys::spawn execution_spawn{source};
         execution_spawn.cwd(cwd);
-        execution_spawn.setup_dup2(std_out.get_fd<io_direction::WRITE>(), 1);
-        execution_spawn.add_close(std_out.get_fd<io_direction::WRITE>());
-        execution_spawn.add_close(std_out.get_fd<io_direction::READ>());
+        for (const auto fd: { std_in, std_out, std_err }) {
+            execution_spawn.setup_dup2(pipes.at(fd).get_fd(directions.at(fd)), fd);
+            execution_spawn.add_close (pipes.at(fd).get_fd(directions.at(fd)));
+        }
+
         auto result = execution_spawn(exe, args);
-        std_out.set_direction<io_direction::READ>();
+
+        for (const auto fd: { std_in, std_out, std_err }) {
+            pipes.at(fd).set_direction(directions.at(fd));
+        }
         return result;
     }
 
 public:
     template <std::size_t SIZE_T>
     execution(fs::path exe, std::array<std::string, SIZE_T> args, fs::path cwd = fs::current_path(), std::source_location source = std::source_location::current()) :
-        std_out{},
+        pipes{pipe{}, pipe{}, pipe{}},
         pid(execute(exe, std::move(args), cwd, source))
     {}
 
@@ -58,9 +74,14 @@ public:
         execution(exe, std::array<std::string, 0>{}, fs::current_path(), source)
     {}
 
+    auto stderr_lines()
+    {
+        return lines<std_err>();
+    }
+
     auto stdout_lines()
     {
-        return lines<&execution::std_out>();
+        return lines<std_out>();
     }
 
     auto wait()
