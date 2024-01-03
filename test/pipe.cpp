@@ -95,7 +95,7 @@ TEST_CASE("Read loop", "[pipe][buffer][generator]")
     auto add_it = std::begin(data::add);
     auto expected_it = std::begin(data::lines);
     auto prev_ex = std::string("");
-    while (add_it != std::end(data::add) || expected_it != std::end(data::lines))
+    while (add_it != std::end(data::add) && expected_it != std::end(data::lines))
     {
         INFO("Buffer : " << pipe_test);
         INFO("Next data: " << *add_it);
