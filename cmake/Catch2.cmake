@@ -7,9 +7,7 @@ if(VB_FETCH_CATCH2_V3)
       Catch2
       GIT_REPOSITORY https://github.com/catchorg/Catch2.git
       GIT_TAG        v3.4.0 # or a later release
+      OVERRIDE_FIND_PACKAGE
     )
 
-    FetchContent_MakeAvailable(Catch2)
-else()
-    find_package(Catch2 3 REQUIRED)
 endif()
