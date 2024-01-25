@@ -220,9 +220,9 @@ public:
 
     template <io_direction DIR>
     requires(DIR != io_direction::BOTH && DIR != io_direction::NONE)
-    auto set_direction()
+    void set_direction()
     {
-        return set_direction(DIR);
+        set_direction(DIR);
     }
 
     template <io_direction DIR> 
@@ -258,11 +258,6 @@ public:
 
         while (result.size() == 0 && result.back() != '\n')
         {
-            if (!has_data())
-            {
-                return std::unexpected{ std::error_code(ENODATA, std::system_category()) };
-            }
-
             if (!buffer.has_data() || can_be_read())
             {
                 buffer_load();
