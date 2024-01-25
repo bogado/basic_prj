@@ -37,12 +37,11 @@ private:
     generator<std::string> lines() {
         auto& input = pipes[INPUT];
 
-        while (input.has_data() || !current_status.has_value())
+        while (input.has_data() || !sys::status_pid(pid).has_value())
         {
             if (auto val = input(); val) {
                 co_yield val.value();
             }
-            current_status = sys::status_pid(pid);
         }
     }
 
@@ -54,6 +53,7 @@ private:
         for (const auto fd: { std_in, std_out, std_err }) {
             execution_spawn.setup_dup2(pipes.at(fd).get_fd(directions.at(fd)), fd);
             execution_spawn.add_close (pipes.at(fd).get_fd(directions.at(fd)));
+            execution_spawn.add_close (pipes.at(fd).get_fd(!directions.at(fd)));
         }
 
         auto result = execution_spawn(exe, args);
