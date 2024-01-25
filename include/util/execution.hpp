@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <type_traits>
 
 namespace vb {
 
@@ -58,9 +59,27 @@ private:
         auto result = execution_spawn(exe, args);
 
         for (const auto fd: { std_in, std_out, std_err }) {
-            pipes.at(fd).set_direction(directions.at(fd));
+            pipes.at(fd).set_direction(!directions.at(fd));
         }
         return result;
+    }
+
+    template <bool BLOCK>
+    auto exec_wait()
+    {
+        auto wait_func = [&]() {
+            if constexpr (BLOCK) {
+                return sys::wait_pid(pid);
+            } else {
+                return sys::status_pid(pid);
+            }
+        };
+
+        if (current_status.has_value()) {
+            return current_status;
+        }
+        current_status = wait_func();
+        return current_status;
     }
 
 public:
@@ -87,15 +106,13 @@ public:
     auto wait()
         -> int
     {
-        current_status = sys::wait_pid(pid);
-        return current_status.value_or(-1);
+        return exec_wait<true>().value_or(-1);
     }
 
     auto status()
         -> sys::status_type
     {
-        current_status = sys::status_pid(pid);
-        return current_status;
+        return exec_wait<false>();
     }
 };
 
