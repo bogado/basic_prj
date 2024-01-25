@@ -2,10 +2,19 @@ project (basic_prj LANGUAGES CXX)
 
 add_library(basic_prj INTERFACE 
     include/util/arrays.hpp
+    include/util/buffer.hpp
+    include/util/converters.hpp
+    include/util/debug.hpp
+    include/util/environment.hpp
+    include/util/execution.hpp
+    include/util/generator.hpp
+    include/util/pipe.hpp
     include/util/string.hpp
+    include/util/string_list.hpp
+    include/util/system.hpp
     include/util/typeset.hpp
     include/util/xml.hpp
-)
+    )
 
 enable_testing()
 
