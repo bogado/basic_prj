@@ -58,7 +58,7 @@ private:
         auto result = execution_spawn(exe, args);
 
         for (const auto fd: { std_in, std_out, std_err }) {
-            pipes.at(fd).set_direction(directions.at(fd));
+            pipes.at(fd).set_direction(!directions.at(fd));
         }
         return result;
     }
