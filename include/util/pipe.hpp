@@ -256,7 +256,7 @@ public:
     {
         auto result = std::string();
 
-        while (result.size() == 0 && result.back() != '\n')
+        while (is<io_direction::READ>() && result.size() == 0 && result.back() != '\n')
         {
             if (!buffer.has_data() || can_be_read())
             {
