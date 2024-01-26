@@ -4,6 +4,7 @@
 #include "generator.hpp"
 #include "system.hpp"
 #include "pipe.hpp"
+#include "util/string.hpp"
 
 #include <array>
 #include <concepts>
@@ -101,6 +102,11 @@ public:
     auto stdout_lines()
     {
         return lines<std_out>();
+    }
+
+    auto send_line(const is_string_type auto& str)
+    {
+        pipes[std_in](str);
     }
 
     auto wait()

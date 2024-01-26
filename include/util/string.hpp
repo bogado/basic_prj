@@ -2,6 +2,7 @@
 #define STRING_HPP_INCLUDED
 
 #include <array>
+#include <concepts>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -10,7 +11,7 @@ namespace vb {
 
 template <typename STRING_TYPE>
 concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::value_type>, typename STRING_TYPE::traits_type> ||
-    std::is_array_v<STRING_TYPE>;
+    std::is_array_v<STRING_TYPE> || std::same_as<STRING_TYPE, const char *>;
 
 // NOLINTBEGIN modernize-avoid-c-arrays
 template <typename VALUE_T, typename TRAITS = std::char_traits<VALUE_T>>
