@@ -24,9 +24,9 @@ private:
     static constexpr auto std_err = std::uint8_t{2};
 
     static constexpr auto directions = std::array{
-        io_direction::READ, 
         io_direction::WRITE,
-        io_direction::WRITE
+        io_direction::READ,
+        io_direction::READ
     };
 
     std::array <pipe, 3> pipes;
@@ -60,7 +60,7 @@ private:
         auto result = execution_spawn(exe, args);
 
         for (const auto fd: { std_in, std_out, std_err }) {
-            pipes.at(fd).set_direction(!directions.at(fd));
+            pipes.at(fd).set_direction(directions.at(fd));
         }
         return result;
     }
