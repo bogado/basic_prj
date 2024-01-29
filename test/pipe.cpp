@@ -47,6 +47,34 @@ struct save_fd {
     }
 };
 
+struct io_direction_tests {
+    vb::io_direction main;
+    vb::io_direction negative;
+};
+
+TEST_CASE("direction setup", "[pipe][direction]")
+{
+    using enum vb::io_direction;
+    auto direction = GENERATE(
+        io_direction_tests{ READ, WRITE },
+        io_direction_tests{ WRITE, READ },
+        io_direction_tests{ BOTH,  NONE },
+        io_direction_tests{ NONE,  BOTH }
+    );
+    REQUIRE((!direction.main) == direction.negative); 
+    SECTION("setting direction") {
+        auto pipe = vb::pipe{};
+        pipe.set_direction(direction.main);
+        REQUIRE(pipe.direction() == direction.main);
+    }
+
+    SECTION("closing direction") {
+        auto pipe = vb::pipe{};
+        pipe.close(direction.main);
+        REQUIRE(pipe.direction() == direction.negative);
+    }
+}
+
 TEST_CASE("pipe redirection", "[pipe][generator][buffer]")
 {
     save_fd restore(2);
