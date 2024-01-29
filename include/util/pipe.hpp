@@ -63,27 +63,21 @@ struct pipe_base {
     using enum io_direction;
 
 private:
-    static constexpr auto index(io_direction dir)
+    static constexpr std::size_t index(io_direction dir)
     {
-        return dir == READ
-            ? 0u
-            : 1u;
+        using enum io_direction;
+        switch (dir) {
+            case READ:
+                return 0;
+            case WRITE:
+                return 1;
+            default:
+                return 0;
+    }
     }
 
     std::array<int,2> file_descriptors{-1,-1};
     buffer_type buffer;
-
-    constexpr io_direction direction() const 
-    {
-        io_direction result = NONE;
-        if (file_descriptors[index(READ)] > 0) {
-            result = READ;
-        }
-        if (file_descriptors[index(WRITE)] > 0) {
-            result = result | WRITE;
-        }
-        return result;
-    }
 
     auto buffer_load(char* data, std::size_t size)
         -> long
@@ -125,10 +119,6 @@ private:
 
         auto new_fd = sys::dup2(to_fd, updated_fd);
 
-        if (to_fd > 2) { // close original fd if it's not std_in, std_out or std_err.
-            sys::close(to_fd);
-        }
-
         to_fd = new_fd;
     }
 
@@ -140,25 +130,50 @@ private:
             .events = POLLIN})[0] & POLLIN) != 0;
     }
 
+    constexpr int& ref_fd(io_direction dir)
+    {
+        if (dir == NONE || dir == BOTH) {
+            throw std::runtime_error("Cannot get reference to BOTH or NONE");
+        }
+
+        return file_descriptors.at(index(dir));
+    }
+
 public:
     using expect_string = std::expected<std::string, std::error_code>;
     using unexpected = std::unexpected<std::error_code>;
 
     constexpr int get_fd(io_direction dir) const
     {
+        if (dir == NONE || dir == BOTH) {
+            return -1;
+        }
+
         return file_descriptors.at(index(dir));
     }
 
     template <io_direction DIR>
     constexpr int get_fd() const
     {
-        return get_fd(index(DIR));
+        return get_fd(DIR);
     }
     
+    constexpr io_direction direction() const 
+    {
+        io_direction result = NONE;
+        if (get_fd<READ>() > 0) {
+            result = READ;
+        }
+        if (get_fd<WRITE>() > 0) {
+            result = result | WRITE;
+        }
+        return result;
+    }
+
     template <io_direction DIR>
     void redirect(int fd)
     {
-        redirect_fd(file_descriptors[index(DIR)], fd);
+        redirect_fd(ref_fd(DIR), fd);
     }
 
     // TODO: Support for writting.
@@ -185,9 +200,10 @@ public:
 
         if (dir == io_direction::BOTH) {
             close_all();
+            return;
         }
 
-        auto& fd = file_descriptors.at(index(dir));
+        auto& fd = ref_fd(dir);
 
         sys::close(fd);
         fd = -1;
@@ -211,10 +227,6 @@ public:
 
     void set_direction(io_direction dir)
     {
-        if (dir == BOTH || dir == NONE) {
-            throw std::logic_error("Set direction for NONE or BOTH is meanless");
-        }
-
         close(!dir);
     }
 
