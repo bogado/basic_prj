@@ -52,7 +52,7 @@ private:
         sys::spawn execution_spawn{source};
         execution_spawn.cwd(cwd);
         for (const auto fd: { std_in, std_out, std_err }) {
-            execution_spawn.setup_dup2(pipes.at(fd).get_fd(directions.at(fd)), fd);
+            execution_spawn.setup_dup2(pipes.at(fd).get_fd(!directions.at(fd)), fd);
             execution_spawn.add_close (pipes.at(fd).get_fd(directions.at(fd)));
             execution_spawn.add_close (pipes.at(fd).get_fd(!directions.at(fd)));
         }
