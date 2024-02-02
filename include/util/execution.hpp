@@ -38,7 +38,7 @@ private:
     generator<std::string> lines() {
         auto& input = pipes[INPUT];
 
-        while (input.has_data() || !sys::status_pid(pid).has_value())
+        while (input.has_data() || !status().has_value())
         {
             if (auto val = input(); val) {
                 co_yield val.value();
