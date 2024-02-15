@@ -4,14 +4,11 @@
 #include "generator.hpp"
 #include "system.hpp"
 #include "pipe.hpp"
-#include "util/string.hpp"
 
 #include <array>
-#include <concepts>
 #include <cstdint>
 #include <filesystem>
 #include <string>
-#include <type_traits>
 
 namespace vb {
 
@@ -38,7 +35,7 @@ private:
     generator<std::string> lines() {
         auto& input = pipes[INPUT];
 
-        while (input.has_data() || !sys::status_pid(pid).has_value())
+        while (input.has_data() || !status().has_value())
         {
             if (auto val = input(); val) {
                 co_yield val.value();
@@ -52,7 +49,7 @@ private:
         sys::spawn execution_spawn{source};
         execution_spawn.cwd(cwd);
         for (const auto fd: { std_in, std_out, std_err }) {
-            execution_spawn.setup_dup2(pipes.at(fd).get_fd(directions.at(!fd)), fd);
+            execution_spawn.setup_dup2(pipes.at(fd).get_fd(!directions.at(fd)), fd);
             execution_spawn.add_close (pipes.at(fd).get_fd(directions.at(fd)));
             execution_spawn.add_close (pipes.at(fd).get_fd(!directions.at(fd)));
         }

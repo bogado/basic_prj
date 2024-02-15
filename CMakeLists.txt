@@ -20,6 +20,9 @@ enable_testing()
 
 # link this 'library' to set the c++ standard / compile-time options requested
 add_library(project_options INTERFACE)
+set_target_properties(project_options PROPERTIES
+    CMAKE_CXX_STANDARD 23
+    CMAKE_CXX_EXTENSIONS False)
 target_compile_features(project_options INTERFACE cxx_std_23)
 
 include(cmake/StandardProjectSettings.cmake)

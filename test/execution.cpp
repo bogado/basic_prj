@@ -54,5 +54,4 @@ TEST_CASE("Execution of a external command that reads the stdin", "[execute][pip
         ++reader;
         CHECK(read == recieve);
     }
-
 }

@@ -8,6 +8,7 @@
 #include "./converters.hpp"
 
 #include <concepts>
+#include <stdexcept>
 #include <utility>
 #include <array>
 #include <expected>
@@ -73,7 +74,7 @@ private:
                 return 1;
             default:
                 return 0;
-    }
+        }
     }
 
     std::array<int,2> file_descriptors{-1,-1};
