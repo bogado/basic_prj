@@ -75,7 +75,7 @@ struct debugger {
                 p++;
             }
         } else if constexpr (std::convertible_to<FIRST, const char*>) {
-            if (first == nullptr) {
+            if (auto ptr = first; ptr == nullptr) {
                 current.append("«nullptr»");
             } else {
                 current.append(first);
@@ -84,6 +84,7 @@ struct debugger {
             current.append(first); 
         } else if constexpr (requires { {std::to_string(first)}; }) {
             current.append(std::to_string(first));
+        } else {
             current.append("«?»");
         }
         if constexpr (sizeof...(ARGS) > 0) {

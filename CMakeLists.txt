@@ -2,25 +2,27 @@ project (basic_prj LANGUAGES CXX)
 
 add_library(basic_prj INTERFACE 
     include/util/arrays.hpp
+    include/util/buffer.hpp
+    include/util/converters.hpp
+    include/util/debug.hpp
+    include/util/environment.hpp
+    include/util/execution.hpp
+    include/util/generator.hpp
+    include/util/pipe.hpp
     include/util/string.hpp
+    include/util/string_list.hpp
+    include/util/system.hpp
     include/util/typeset.hpp
     include/util/xml.hpp
-)
+    )
 
 enable_testing()
-
-include(cmake/StandardProjectSettings.cmake)
 
 # link this 'library' to set the c++ standard / compile-time options requested
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_23)
 
-if(cmake_cxx_compiler_id MATCHES ".*clang")
-  option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" off)
-  if (ENABLE_BUILD_WITH_TIME_TRACE)
-    add_compile_definitions(project_options INTERFACE -ftime-trace)
-  endif()
-endif()
+include(cmake/StandardProjectSettings.cmake)
 
 # inlcude catch2 v3 setup
 include(cmake/Catch2.cmake)

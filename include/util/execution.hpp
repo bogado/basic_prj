@@ -4,12 +4,14 @@
 #include "generator.hpp"
 #include "system.hpp"
 #include "pipe.hpp"
+#include "util/string.hpp"
 
 #include <array>
 #include <concepts>
+#include <cstdint>
 #include <filesystem>
 #include <string>
-#include <atomic>
+#include <type_traits>
 
 namespace vb {
 
@@ -17,21 +19,30 @@ namespace fs = std::filesystem;
 
 struct execution {
 private:
-    using pipe_t = pipe<>;
-    pipe<> std_out;
+    static constexpr auto std_in  = std::uint8_t{0};
+    static constexpr auto std_out = std::uint8_t{1};
+    static constexpr auto std_err = std::uint8_t{2};
+
+    static constexpr auto directions = std::array{
+        io_direction::WRITE,
+        io_direction::READ,
+        io_direction::READ
+    };
+
+    std::array <pipe, 3> pipes;
     pid_t pid;
     sys::status_type current_status{};
 
-    template <pipe_t execution::* INPUT>
+    template <std::size_t INPUT>
+    requires (INPUT >= 0 && INPUT < 3)
     generator<std::string> lines() {
-        auto& input = this->*INPUT;
+        auto& input = pipes[INPUT];
 
-        while (input.has_data() || !current_status.has_value())
+        while (input.has_data() || !sys::status_pid(pid).has_value())
         {
             if (auto val = input(); val) {
                 co_yield val.value();
             }
-            current_status = sys::status_pid(pid);
         }
     }
 
@@ -40,18 +51,42 @@ private:
     {
         sys::spawn execution_spawn{source};
         execution_spawn.cwd(cwd);
-        execution_spawn.setup_dup2(std_out.get_fd<io_direction::WRITE>(), 1);
-        execution_spawn.setup_dup2(std_out.get_fd<io_direction::READ>(), 0);
-        execution_spawn.add_close(std_out.get_fd<io_direction::WRITE>());
-        execution_spawn.add_close(std_out.get_fd<io_direction::READ>());
+        for (const auto fd: { std_in, std_out, std_err }) {
+            execution_spawn.setup_dup2(pipes.at(fd).get_fd(directions.at(!fd)), fd);
+            execution_spawn.add_close (pipes.at(fd).get_fd(directions.at(fd)));
+            execution_spawn.add_close (pipes.at(fd).get_fd(!directions.at(fd)));
+        }
+
         auto result = execution_spawn(exe, args);
+
+        for (const auto fd: { std_in, std_out, std_err }) {
+            pipes.at(fd).set_direction(directions.at(fd));
+        }
         return result;
+    }
+
+    template <bool BLOCK>
+    auto exec_wait()
+    {
+        auto wait_func = [&]() {
+            if constexpr (BLOCK) {
+                return sys::wait_pid(pid);
+            } else {
+                return sys::status_pid(pid);
+            }
+        };
+
+        if (current_status.has_value()) {
+            return current_status;
+        }
+        current_status = wait_func();
+        return current_status;
     }
 
 public:
     template <std::size_t SIZE_T>
     execution(fs::path exe, std::array<std::string, SIZE_T> args, fs::path cwd = fs::current_path(), std::source_location source = std::source_location::current()) :
-        std_out{},
+        pipes{pipe{}, pipe{}, pipe{}},
         pid(execute(exe, std::move(args), cwd, source))
     {}
 
@@ -59,23 +94,31 @@ public:
         execution(exe, std::array<std::string, 0>{}, fs::current_path(), source)
     {}
 
+    auto stderr_lines()
+    {
+        return lines<std_err>();
+    }
+
     auto stdout_lines()
     {
-        return lines<&execution::std_out>();
+        return lines<std_out>();
+    }
+
+    auto send_line(const is_string_type auto& str)
+    {
+        pipes[std_in](str);
     }
 
     auto wait()
         -> int
     {
-        current_status = sys::wait_pid(pid);
-        return current_status.value_or(-1);
+        return exec_wait<true>().value_or(-1);
     }
 
     auto status()
         -> sys::status_type
     {
-        current_status = sys::status_pid(pid);
-        return current_status;
+        return exec_wait<false>();
     }
 };
 

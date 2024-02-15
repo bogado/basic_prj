@@ -10,6 +10,19 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
                                                "MinSizeRel" "RelWithDebInfo")
 endif()
 
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+    option(USE_LIBCXX_STDLIB "Use libc++ instead of libstdc++" on)
+    if (USE_LIBCXX_STDLIB)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++" CACHE STRING "CXX flags" FORCE)
+        add_link_options(-stdlib=libc++)
+    endif()
+
+    option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" off)
+    if (ENABLE_BUILD_WITH_TIME_TRACE)
+        target_compile_options(project_options INTERFACE -ftime-trace)
+    endif()
+endif()
+
 # Generate compile_commands.json to make it easier to work with clang based
 # tools
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
