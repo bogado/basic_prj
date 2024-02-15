@@ -13,7 +13,7 @@ endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
     option(USE_LIBCXX_STDLIB "Use libc++ instead of libstdc++" on)
     if (USE_LIBCXX_STDLIB)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++" CACHE STRING "CXX flags" FORCE)
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
         add_link_options(-stdlib=libc++)
     endif()
 
