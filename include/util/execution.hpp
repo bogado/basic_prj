@@ -41,10 +41,10 @@ private:
         sys::spawn execution_spawn{source};
         execution_spawn.cwd(cwd);
         execution_spawn.setup_dup2(std_out.get_fd<io_direction::WRITE>(), 1);
+        execution_spawn.setup_dup2(std_out.get_fd<io_direction::READ>(), 0);
         execution_spawn.add_close(std_out.get_fd<io_direction::WRITE>());
         execution_spawn.add_close(std_out.get_fd<io_direction::READ>());
         auto result = execution_spawn(exe, args);
-        std_out.set_direction<io_direction::READ>();
         return result;
     }
 
