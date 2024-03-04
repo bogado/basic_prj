@@ -29,8 +29,8 @@ struct generator {
             return generator{handle_type::from_promise(*this)};
         }
 
-        std::suspend_never  initial_suspend() noexcept { return {}; }
-        std::suspend_always   final_suspend() noexcept { done = true; return {}; }
+        std::suspend_always  initial_suspend() noexcept { return {}; }
+        std::suspend_always    final_suspend() noexcept { done = true; return {}; }
 
         template <std::convertible_to<reference> YIELDED_TYPE>
         std::suspend_always yield_value(YIELDED_TYPE && yielded) noexcept
@@ -85,22 +85,21 @@ struct generator {
         using value_type = generator::value_type;
         using reference = generator::reference;
 
-        generator *self = nullptr;
-        value_type ref{};
+        mutable generator *self = nullptr;
 
         iterator(generator* s) :
-            self{s},
-            ref{self->current().value_or(value_type{})}
-        {
-            self->next();
-        }
+            self{s}
+        {}
 
         reference operator*() const {
-            return ref;
+            if (!self->current().has_value()) {
+                self->next();
+            }
+            return self->current().value();
         }
 
         iterator& operator++() {
-            ref = self->next();
+            self->next();
             return *this;
         }
 
