@@ -32,7 +32,8 @@ private:
 
     template <std::size_t INPUT>
     requires (INPUT >= 0 && INPUT < 3)
-    generator<std::string> lines() {
+    generator<std::string> lines()
+    {
         auto& input = pipes[INPUT];
 
         while (input.has_data() || !status().has_value())
