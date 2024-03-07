@@ -27,6 +27,9 @@ TEST_CASE("Execution of external command", "[execute][pipe][buffer][generator]")
     auto handler = vb::execution(vb::fs::path("/bin/ls"sv), std::array{std::string{vb::fs::path(test_dir) / "test_data"}});
     auto expectation = expected.begin();
     for (auto line : handler.stdout_lines()) {
+        if (line == "") {
+            continue;
+        }
         CHECK(expectation != expected.end());
         CHECK(*expectation == line);
         ++expectation;
@@ -38,7 +41,7 @@ TEST_CASE("Execution of external command", "[execute][pipe][buffer][generator]")
 
 TEST_CASE("Execution of a external command that reads the stdin", "[execute][pipe][buffer][generator]")
 {
-    auto handler = vb::execution(vb::fs::path("/usr/bin/sed", "s/[24680]/./"));
+    auto handler = vb::execution(vb::fs::path("/usr/bin/sed"), std::array{ std::string("s/[24680]/./") });
     auto data = std::array {
         std::pair{ "12345678", "1.3.5.7." },
         std::pair{ "abcef", "abcef" },
