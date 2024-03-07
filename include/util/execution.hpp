@@ -103,7 +103,9 @@ public:
 
     auto send_line(const is_string_type auto& str)
     {
-        pipes[std_in](str);
+        auto& in = pipes[std_in];
+        in(str);
+        in.flush();
     }
 
     auto wait()

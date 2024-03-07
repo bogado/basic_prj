@@ -229,6 +229,7 @@ constexpr inline auto read    = throw_on_error<call_type::ERRNO, int, void*, std
 constexpr inline auto write   = throw_on_error<call_type::ERRNO, int, const void*, std::size_t>("write",  ::write);
 constexpr inline auto close   = throw_on_error<call_type::ERRNO, int>                          ("close",  ::close);
 constexpr inline auto open    = throw_on_error<call_type::ERRNO, const char*, int>             ("open",   ::open);
+constexpr inline auto fsync   = throw_on_error<call_type::ERRNO, int>                          ("fsync",  ::fsync);
 
 class spawn {
     posix_spawn_file_actions_t file_actions{};
@@ -276,7 +277,6 @@ class spawn {
         posix_spawn(&result, cmd, &file_actions, &attributes, args, env, source); 
         return result;
     }
-    
 
 public:
 
