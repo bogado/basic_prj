@@ -71,7 +71,6 @@ struct generator {
             return {};
         }
         value_type val = opt.value();
-        opt.reset();
         return val;
     }
 
@@ -83,7 +82,6 @@ struct generator {
 
     struct iterator {
         using value_type = generator::value_type;
-        using reference = generator::reference;
 
         mutable generator *self = nullptr;
 
