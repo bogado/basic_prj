@@ -30,7 +30,7 @@ TEST_CASE("Execution of external command", "[execute][pipe][buffer][generator]")
         if (line == "") {
             continue;
         }
-        CHECK(expectation != expected.end());
+        REQUIRE(expectation != expected.end());
         CHECK(*expectation == line);
         ++expectation;
     }
