@@ -51,7 +51,8 @@ TEST_CASE("Execution of a external command that reads the stdin", "[execute][pip
 
     auto load = handler.stdout_lines();
     auto reader = load.begin();
-    for (auto [ send, recieve ] : data ) {
+    for (auto [ send, recieve ] : data )
+    {
         handler.send_line(send);
         auto read = *reader;
         ++reader;
