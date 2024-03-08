@@ -244,12 +244,6 @@ public:
         return direction() == BOTH || direction() == DIR;
     }
 
-    void flush() {
-        if (is<WRITE>()) {
-            sys::fsync(file_descriptors[index(WRITE)]);
-        }
-    }
-
     bool closed() const {
         return (is<READ>()  && file_descriptors[index(READ)] == -1)
             && (is<WRITE>() && file_descriptors[index(WRITE)] == -1);

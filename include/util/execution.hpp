@@ -104,9 +104,16 @@ public:
 
     auto send_line(const is_string_type auto& str)
     {
+        auto line = std::string(str);
+        if (!line.ends_with('\n')) {
+            line += '\n';
+        }
         auto& in = pipes[std_in];
-        in(str);
-        in.flush();
+        in(line);
+    }
+
+    auto done() {
+        pipes[std_in].close_all();
     }
 
     auto wait()
