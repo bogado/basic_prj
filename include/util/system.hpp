@@ -231,9 +231,24 @@ constexpr inline auto close   = throw_on_error<call_type::ERRNO, int>           
 constexpr inline auto open    = throw_on_error<call_type::ERRNO, const char*, int>             ("open",   ::open);
 constexpr inline auto fsync   = throw_on_error<call_type::ERRNO, int>                          ("fsync",  ::fsync);
 
+enum class lookup {
+    PATH,
+    NO_LOOKUP
+};
+
+template <lookup LOOKUP = lookup::NO_LOOKUP>
 class spawn {
     posix_spawn_file_actions_t file_actions{};
     posix_spawnattr_t    attributes{};
+
+    static constexpr auto name = LOOKUP == lookup::NO_LOOKUP ? "posix_spawn" : "posix_spawnp";
+    static constexpr auto function = []() {
+        if constexpr (LOOKUP == lookup::NO_LOOKUP) {
+            return ::posix_spawn;
+        } else {
+            return ::posix_spawnp;
+        }
+    }();
 
     static constexpr auto posix_spawn {
         throw_on_error<
@@ -244,7 +259,7 @@ class spawn {
             const posix_spawnattr_t*,
             char * const *,
             char * const *
-       >("posix_spawn", ::posix_spawn)
+       >(name, function)
     };
 
     constexpr static auto spawn_file_actions_init{
@@ -273,7 +288,7 @@ class spawn {
 
     auto do_spawn(char *cmd, char * const * args, char * const * env, std::source_location source = std::source_location::current())
     {
-        pid_t result;
+        pid_t result{};
         posix_spawn(&result, cmd, &file_actions, &attributes, args, env, source); 
         return result;
     }
