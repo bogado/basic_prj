@@ -79,7 +79,7 @@ struct generator {
         if (!handle.done()) {
             resume();
         }
-        return handle.done();
+        return !handle.done();
     }
 
     struct iterator {
@@ -104,7 +104,7 @@ struct generator {
         }
 
         bool operator==(const std::default_sentinel_t&) const {
-            return self == nullptr || (!*self);
+            return self == nullptr || !(*self);
         }
     };
 

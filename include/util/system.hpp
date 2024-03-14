@@ -6,6 +6,7 @@
 #include <array>
 #include <cerrno>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
@@ -194,7 +195,7 @@ inline auto wait_pid(pid_t pid, int option = 0, std::source_location source = st
     constexpr auto sys_waitpid = throw_on_error<call_type::ERRNO, pid_t, int*, int>("waitpid", ::waitpid, std::array{ EAGAIN });
     int status{-1};
     int pid_r = sys_waitpid(pid, &status, option, source);
-    if (pid_r != pid || !WIFEXITED(status)) {
+    if (pid_r != pid) {
         return status_type{};
     }
     return WEXITSTATUS(status);
@@ -249,6 +250,7 @@ enum class lookup {
 class spawn {
     posix_spawn_file_actions_t file_actions{};
     posix_spawnattr_t    attributes{};
+    pid_t pid{-1};
 
     template <lookup LOOKUP>
     static constexpr auto posix_spawn {
@@ -305,9 +307,7 @@ class spawn {
 
             env = ::environ;
         }
-        pid_t result{};
-        function(path_lookup)(&result, cmd, &file_actions, &attributes, args, env, source); 
-        return result;
+        return function(path_lookup)(&pid, cmd, &file_actions, &attributes, args, env, source); 
     }
 
 public:
@@ -371,6 +371,11 @@ public:
         auto c_env = Args(env);
         auto executable = exec.native();
         return do_spawn(path_lookup, c_args.arg0(), c_args.data(), c_env.data(), source);
+    }
+
+    auto get_pid() const
+    {
+        return pid;
     }
 };
 

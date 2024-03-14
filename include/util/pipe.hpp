@@ -320,7 +320,7 @@ public:
 
         while (result.size() == 0 && result.back() != '\n')
         {
-            if (!buffer.has_data() || can_be_read())
+            if (!buffer.has_data() && can_be_read())
             {
                 buffer_load();
             } else if (!buffer.has_data()) {

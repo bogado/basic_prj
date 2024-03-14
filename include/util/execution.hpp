@@ -149,17 +149,37 @@ public:
         pipes{redirections}
     {}
 
+    template <bool BLOCK>
+    auto exec_wait()
+    {
+        auto wait_func = [&]() {
+            if constexpr (BLOCK) {
+                return sys::wait_pid(pid);
+            } else {
+                return sys::status_pid(pid);
+            }
+        };
+
+        if (current_status.has_value()) {
+            return current_status;
+        }
+        current_status = wait_func();
+      return current_status;
+    }
+
     template <std_io IO>
     generator<std::string> lines()
     {
         auto& opt_input = pipes[IO];
         if (opt_input.has_value()) {
             auto& input = opt_input.value();
-            while (!input.closed() || !current_status.has_value())
+            while (!input.closed() && !current_status.has_value())
             {
                 if (auto val = input(); val)
                 {
                     co_yield val.value();
+                } else {
+                    exec_wait<false>();
                 }
             }
         }
@@ -189,6 +209,8 @@ public:
             std::same_as<PATH_LIKE_T, fs::path> ? sys::lookup::NO_LOOKUP : sys::lookup::PATH,
             all_args);
         
+        pid = spawner.get_pid();
+
         pipes.for_each_pipe([&](std_io io, vb::pipe& open_pipe) {
             open_pipe.set_direction(!direction(io));
         });
@@ -198,24 +220,6 @@ public:
     auto execute(is_path_like auto exe, fs::path cwd = fs::current_path())
     {
         execute<0>(exe, {}, cwd);
-    }
-
-    template <bool BLOCK>
-    auto exec_wait()
-    {
-        auto wait_func = [&]() {
-            if constexpr (BLOCK) {
-                return sys::wait_pid(pid);
-            } else {
-                return sys::status_pid(pid);
-            }
-        };
-
-        if (current_status.has_value()) {
-            return current_status;
-        }
-        current_status = wait_func();
-        return current_status;
     }
 
     auto done(std_io io)
