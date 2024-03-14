@@ -27,6 +27,10 @@
 
 #include "debug.hpp"
 
+extern "C" {
+    extern char * const * environ;
+}
+
 namespace vb {
 
 namespace fs = std::filesystem;
@@ -82,7 +86,11 @@ constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::a
             }
         } else if constexpr (TYPE == call_type::SPAWN) {
             if (result != 0) {
-                return throw_error(errno);
+                if (errno == 0) {
+                    return throw_error(result);
+                } else {
+                    return throw_error(errno);
+                }
             }
         } else if constexpr (TYPE == call_type::SIGNAL) {
             if (result == SIG_ERR) {
@@ -231,10 +239,16 @@ constexpr inline auto close   = throw_on_error<call_type::ERRNO, int>           
 constexpr inline auto open    = throw_on_error<call_type::ERRNO, const char*, int>             ("open",   ::open);
 constexpr inline auto fsync   = throw_on_error<call_type::ERRNO, int>                          ("fsync",  ::fsync);
 
+enum class lookup {
+    PATH,
+    NO_LOOKUP
+};
+
 class spawn {
     posix_spawn_file_actions_t file_actions{};
     posix_spawnattr_t    attributes{};
 
+    template <lookup LOOKUP>
     static constexpr auto posix_spawn {
         throw_on_error<
             call_type::SPAWN,
@@ -244,21 +258,33 @@ class spawn {
             const posix_spawnattr_t*,
             char * const *,
             char * const *
-       >("posix_spawn", ::posix_spawn)
+       >(std::string_view("spawnp").substr(0, LOOKUP == lookup::NO_LOOKUP ? 5 : 6), LOOKUP == lookup::NO_LOOKUP ? ::posix_spawn : ::posix_spawnp)
     };
+
+    static constexpr auto function(const lookup path_lookup) {
+        if (path_lookup == lookup::NO_LOOKUP) {
+            return posix_spawn<lookup::NO_LOOKUP>;
+        } else {
+            return posix_spawn<lookup::PATH>;
+        }
+    }
 
     constexpr static auto spawn_file_actions_init{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*>("posix_spawn_file_actions_init", ::posix_spawn_file_actions_init)
     };
+
     constexpr static auto spawn_file_actions_destroy{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*>("posix_spawn_file_actions_destroy", ::posix_spawn_file_actions_destroy)
     };
+
     constexpr static auto spawn_file_actions_addchdir{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, const char *>("posix_spawn_file_actions_addchdir", ::posix_spawn_file_actions_addchdir_np)
     };
+
     constexpr static auto spawn_file_actions_addclose{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, int>("posix_spawn_file_actions_addclose", ::posix_spawn_file_actions_addclose)
     };
+
     constexpr static auto spawn_file_actions_adddup2{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, int, int>("posix_spawn_file_actions_adddup2", ::posix_spawn_file_actions_adddup2)
     };
@@ -271,10 +297,14 @@ class spawn {
         throw_on_error<call_type::SPAWN, posix_spawnattr_t*>("posix_spawnattr_destroy", ::posix_spawnattr_destroy)
     };
 
-    auto do_spawn(char *cmd, char * const * args, char * const * env, std::source_location source = std::source_location::current())
+    auto do_spawn(lookup path_lookup, char *cmd, char * const * args, char * const * env, std::source_location source = std::source_location::current())
     {
-        pid_t result;
-        posix_spawn(&result, cmd, &file_actions, &attributes, args, env, source); 
+        if (env == nullptr) {
+
+            env = ::environ;
+        }
+        pid_t result{};
+        function(path_lookup)(&result, cmd, &file_actions, &attributes, args, env, source); 
         return result;
     }
 
@@ -314,33 +344,32 @@ public:
         add_close(fromFd, source);
     }
 
-    int operator()(is_arguments_type auto args, std::source_location source = std::source_location::current())
+    int operator()(lookup path_lookup, is_arguments_type auto args, std::source_location source = std::source_location::current())
     {
         auto c_args = Args(args);
-        return do_spawn(c_args.arg0(), c_args.data(), nullptr, source); 
+        return do_spawn(path_lookup, c_args.arg0(), c_args.data(), nullptr, source); 
     }
 
-    int operator()(is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
+    int operator()(lookup path_lookup, is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
     {
         auto c_args = Args(args);
         auto c_env = Args(env);
-        return do_spawn(c_args.arg0(), c_args.data(), c_env.data(), source);
+        return do_spawn(path_lookup, c_args.arg0(), c_args.data(), c_env.data(), source);
     }
 
-    int operator()(fs::path exec, is_arguments_type auto args, std::source_location source = std::source_location::current())
+    int operator()(lookup path_lookup, fs::path exec, is_arguments_type auto args, std::source_location source = std::source_location::current())
     {
         auto c_args = Args(exec, args);
-        return do_spawn(c_args.arg0(), c_args.data(), nullptr, source);
+        return do_spawn(path_lookup, c_args.arg0(), c_args.data(), nullptr, source);
     }
 
-    int operator()(fs::path exec, is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
+    int operator()(lookup path_lookup, fs::path exec, is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
     {
         auto c_args = Args(exec, args);
         auto c_env = Args(env);
         auto executable = exec.native();
-        return do_spawn(c_args.arg0(), c_args.data(), c_env.data(), source);
+        return do_spawn(path_lookup, c_args.arg0(), c_args.data(), c_env.data(), source);
     }
-
 };
 
 }}
