@@ -5,13 +5,15 @@
 #include "system.hpp"
 #include "pipe.hpp"
 
+#include "./filesystem.hpp"
+
 #include <cinttypes>
 #include <array>
 #include <concepts>
 #include <cstdint>
-#include <filesystem>
 #include <string>
-
+#include <stdexcept>
+#include <string>
 namespace vb {
 
 namespace fs = std::filesystem;
@@ -32,9 +34,9 @@ enum class io_set : std::uint8_t {
 template<typename ANY_IO>
 concept std_io_or_set = std::same_as<ANY_IO, std_io> || std::same_as<ANY_IO, io_set>;
 
-constexpr auto to_set(io_set io) { return io; }
+constexpr inline auto to_set(io_set io) { return io; }
 
-constexpr auto to_set(std_io io) {
+constexpr inline auto to_set(std_io io) {
     switch (io)
     {
     case std_io::IN:
@@ -44,9 +46,10 @@ constexpr auto to_set(std_io io) {
     case std_io::ERR:
         return io_set::ERR;
     }
+    throw std::runtime_error("Unreachable");
 }
 
-auto direction(std_io io) {
+constexpr inline auto direction(std_io io) {
     if (io == std_io::IN) {
         return io_direction::READ;
     } else {
@@ -54,15 +57,15 @@ auto direction(std_io io) {
     }
 }
 
-auto get_fd(std_io io) {
+constexpr inline auto get_fd(std_io io) {
     return static_cast<int>(io);
 }
 
-bool operator&(std_io_or_set auto first, io_set second) {
+constexpr inline bool operator&(std_io_or_set auto first, io_set second) {
     return (static_cast<std::uint8_t>(to_set(first)) & static_cast<std::uint8_t>(second)) == static_cast<std::uint8_t>(to_set(first));
 }
 
-io_set operator|(std_io_or_set auto first, std_io_or_set auto second) {
+constexpr inline io_set operator|(std_io_or_set auto first, std_io_or_set auto second) {
     return static_cast<io_set>(static_cast<std::uint8_t>(to_set(first)) | static_cast<std::uint8_t>(to_set(second)));
 }
 
