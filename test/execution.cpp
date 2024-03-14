@@ -25,8 +25,8 @@ using namespace std::literals;
 
 TEST_CASE("Execution of external command", "[execute][pipe][buffer][generator]")
 {
-    auto handler = vb::execution(vb::sys::lookup::NO_LOOKUP, vb::io_set::OUT);
-    handler.execute(vb::fs::path("/bin/ls"sv), std::array{std::string{vb::fs::path(test_dir) / "test_data"}});
+    auto handler = vb::execution(vb::io_set::OUT);
+    handler.execute(vb::fs::path("/bin/ls"sv), std::array{(vb::fs::path(test_dir) / "test_data").string()});
     auto expectation = expected.begin();
     for (auto line : handler.lines<vb::std_io::OUT>()) {
         if (line == "") {
