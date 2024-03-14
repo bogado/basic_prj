@@ -9,6 +9,7 @@
 
 #include <concepts>
 #include <stdexcept>
+#include <system_error>
 #include <utility>
 #include <array>
 #include <expected>
@@ -56,6 +57,48 @@ operator not(io_direction dir)
     default:
         return BOTH;
     }
+}
+
+inline std::error_category& pipe_error_category() {
+    struct pipe_error_category : std::error_category {
+        const char * name() const noexcept override
+        {
+            return "VB pipe";
+        }
+
+        std::string message(int ev) const noexcept override
+        {
+            switch (ev) {
+            case 0:
+                return "No problem";
+            case 1:
+                return "No data available";
+            default:
+                return "unexpected error code";
+
+            }
+        }
+
+        std::error_condition default_error_condition(int ev) const noexcept override 
+        {
+            return std::error_condition{ev, *this};
+        }
+
+        bool equivalent(int code, const std::error_condition &condition) const noexcept override
+        {
+            if (condition.category() == *this) {
+                return code == condition.value();
+            }
+            if (code == 0 && std::system_category().equivalent(0, condition)) {
+                return true;
+            }
+            return false;
+
+        }
+    };
+    static pipe_error_category instance{};
+
+    return instance; 
 }
 
 template <std::size_t BUFFER_SIZE = (4 * KB)>
@@ -293,8 +336,8 @@ public:
             }
 
             if (buffer.has_data()) {
-            result += buffer.unload_line();
-        }
+                result += buffer.unload_line();
+            }
         }
         return expect_string{result};
     }
