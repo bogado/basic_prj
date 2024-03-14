@@ -76,7 +76,9 @@ struct generator {
 
     explicit operator bool()
     {
-        resume();
+        if (!handle.done()) {
+            resume();
+        }
         return handle.done();
     }
 
@@ -102,7 +104,7 @@ struct generator {
         }
 
         bool operator==(const std::default_sentinel_t&) const {
-            return self == nullptr || *self;
+            return self == nullptr || (!*self);
         }
     };
 
