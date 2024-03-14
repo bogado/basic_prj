@@ -45,7 +45,11 @@ private:
     }
 
     template <std::size_t SIZE>
-    auto execute(fs::path exe,const std::array<std::string, SIZE>& args, fs::path cwd, std::source_location source = std::source_location::current())
+    auto execute(
+        fs::path exe,
+        const std::array<std::string, SIZE>& args,
+        fs::path cwd,
+        std::source_location source = std::source_location::current())
     {
         sys::spawn execution_spawn{source};
         execution_spawn.cwd(cwd);
