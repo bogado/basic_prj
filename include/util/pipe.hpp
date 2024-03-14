@@ -166,14 +166,6 @@ private:
         to_fd = new_fd;
     }
 
-    bool can_be_read() const 
-    {
-        using namespace std::literals;
-        return (sys::poll(0ms, sys::poll_arg {
-            .fd = file_descriptors[index(READ)],
-            .events = POLLIN})[0] & POLLIN) != 0;
-    }
-
     constexpr int& ref_fd(io_direction dir)
     {
         if (dir == NONE || dir == BOTH) {
