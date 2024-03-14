@@ -27,9 +27,11 @@
 
 #include "debug.hpp"
 
+#ifndef __USE_GNU
 extern "C" {
-    extern char * const * environ;
+    extern char ** environ;
 }
+#endif // !__USE_GNU
 
 namespace vb {
 
