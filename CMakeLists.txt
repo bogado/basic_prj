@@ -7,6 +7,7 @@ add_library(basic_prj INTERFACE
     include/util/debug.hpp
     include/util/environment.hpp
     include/util/execution.hpp
+    include/util/filesystem.hpp
     include/util/generator.hpp
     include/util/pipe.hpp
     include/util/string.hpp
