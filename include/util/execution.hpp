@@ -11,9 +11,10 @@
 #include <array>
 #include <concepts>
 #include <cstdint>
-#include <string>
 #include <stdexcept>
 #include <string>
+#include <utility>
+
 namespace vb {
 
 namespace fs = std::filesystem;
@@ -75,13 +76,13 @@ private:
         using value_type = std::optional<pipe>;
 
         redirection_pipes(io_set redirections) : 
-        pipes {
-           std_io::IN  & redirections ? value_type{pipe{}}: value_type{},
-           std_io::OUT & redirections ? value_type{pipe{}}: value_type{},
-           std_io::ERR & redirections ? value_type{pipe{}}: value_type{}
-        }
+            pipes {
+                std_io::IN  & redirections ? value_type{pipe{}}: value_type{},
+                    std_io::OUT & redirections ? value_type{pipe{}}: value_type{},
+                    std_io::ERR & redirections ? value_type{pipe{}}: value_type{}
+            }
         {}
-        
+
         std::array <value_type, 3> pipes;
 
         value_type& operator[](std_io dir) noexcept {
@@ -95,7 +96,8 @@ private:
         }
 
         auto get_fd(std_io io) const noexcept
-        -> int {
+        -> int
+        {
             const auto& opt = (*this)[io];
             if (!opt) {
                 return -static_cast<uint8_t>(io);
@@ -103,7 +105,8 @@ private:
             return opt.value().get_fd(direction(io));
         }
 
-        auto get_reverse_fd(std_io io) const noexcept {
+        auto get_reverse_fd(std_io io) const noexcept 
+        {
             const auto& opt = (*this)[io];
             if (!opt) {
                 return -static_cast<uint8_t>(io);
@@ -111,7 +114,8 @@ private:
             return opt.value().get_fd(!direction(io));
         }
 
-        bool set_direction(std_io io) noexcept {
+        bool set_direction(std_io io) noexcept 
+        {
             auto& opt = (*this)[io];
             if (!opt) {
                 return false;
@@ -123,18 +127,26 @@ private:
             }
             return true;
         }
+
+        template <std::invocable<std_io, pipe&> EXECUTABLE_T>
+        void for_each_pipe(EXECUTABLE_T&& exec)
+        {
+            for (const auto io: { std_io::IN, std_io::OUT, std_io::ERR }) {
+                if (auto& open_pipe = (*this)[io]; open_pipe) {
+                    std::forward<EXECUTABLE_T>(exec)(io, open_pipe.value());
+                }
+            }
+        }
     };
 
     redirection_pipes pipes;
     pid_t pid{-1};
     sys::status_type current_status{};
     sys::spawn spawner{};
-    sys::lookup path_lookup;
 
 public:
-    execution(sys::lookup path = sys::lookup::PATH, io_set redirections = io_set::NONE) :
-        pipes{redirections},
-        path_lookup{path}
+    execution(io_set redirections = io_set::NONE) :
+        pipes{redirections}
     {}
 
     template <std_io IO>
@@ -143,7 +155,7 @@ public:
         auto& opt_input = pipes[IO];
         if (opt_input.has_value()) {
             auto& input = opt_input.value();
-            while (input.has_data() || !status().has_value())
+            while (!input.closed() || !current_status.has_value())
             {
                 if (auto val = input(); val)
                 {
@@ -153,29 +165,37 @@ public:
         }
     }
 
-    template <std::size_t SIZE>
+    template <std::size_t SIZE, is_path_like PATH_LIKE_T>
     auto execute(
-        fs::path exe,
-        const std::array<std::string, SIZE>& args,
-        fs::path cwd,
-        std::source_location source = std::source_location::current())
+         PATH_LIKE_T exe,
+         const std::array<std::string, SIZE>& args,
+         fs::path cwd = fs::current_path(),
+         std::source_location source = std::source_location::current())
     {
         spawner.cwd(cwd);
-        for (const auto io: { std_io::IN, std_io::OUT, std_io::ERR }) {
-            if (pipes[io]) {
-                spawner.add_close (pipes.get_fd(io));
-                spawner.setup_dup2(pipes.get_reverse_fd(io), get_fd(io));
-                spawner.add_close (pipes.get_reverse_fd(io));
-                pipes.set_direction(io);
-            }
-        }
+        pipes.for_each_pipe([&](std_io io, vb::pipe& open_pipe) {
+            spawner.add_close (open_pipe.get_fd(!direction(io)), source);
+            spawner.setup_dup2(open_pipe.get_fd(direction(io)), get_fd(io), source);
+            spawner.add_close (open_pipe.get_fd(direction(io)), source);
+        });
 
-        auto result = spawner(path_lookup, exe, args);
+        std::array<std::string, SIZE+1> all_args;
+        auto it = all_args.begin();
+        *it = exe;
 
+        std::ranges::copy(args, ++it);
+
+        auto result = spawner(
+            std::same_as<PATH_LIKE_T, fs::path> ? sys::lookup::NO_LOOKUP : sys::lookup::PATH,
+            all_args);
+        
+        pipes.for_each_pipe([&](std_io io, vb::pipe& open_pipe) {
+            open_pipe.set_direction(!direction(io));
+        });
         return result;
     }
 
-    auto execute(fs::path exe, fs::path cwd)
+    auto execute(is_path_like auto exe, fs::path cwd = fs::current_path())
     {
         execute<0>(exe, {}, cwd);
     }
@@ -198,7 +218,8 @@ public:
         return current_status;
     }
 
-    auto done(std_io io) {
+    auto done(std_io io)
+    {
         if (pipes[io].has_value()) {
             pipes[io].value().close_all();
         }
