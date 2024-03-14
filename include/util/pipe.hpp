@@ -140,6 +140,17 @@ private:
         return file_descriptors.at(index(dir));
     }
 
+    bool can_be_read() const 
+    {
+        if (!is<io_direction::READ>()) {
+            return false;
+        }
+
+        using namespace std::literals;
+        return (sys::poll(0ms, sys::poll_arg {
+            .fd = file_descriptors[index(READ)],
+            .events = POLLIN})[0] & POLLIN) != 0;
+    }
 public:
     using expect_string = std::expected<std::string, std::error_code>;
     using unexpected = std::unexpected<std::error_code>;
@@ -245,12 +256,15 @@ public:
     }
 
     bool closed() const {
+        if (buffer.has_data()) {
+            return false;
+        }
         return (is<READ>()  && file_descriptors[index(READ)] == -1)
             && (is<WRITE>() && file_descriptors[index(WRITE)] == -1);
    }
 
     bool has_data() const {
-        return (buffer.has_data() || can_be_read());
+        return buffer.has_data() || can_be_read();
     }
 
     template <parse::can_be_outstreamed... DATA_Ts>
@@ -269,15 +283,19 @@ public:
     {
         auto result = std::string();
 
-        while (is<io_direction::READ>() && result.size() == 0 && result.back() != '\n')
+        while (result.size() == 0 && result.back() != '\n')
         {
             if (!buffer.has_data() || can_be_read())
             {
                 buffer_load();
+            } else if (!buffer.has_data()) {
+                return unexpected(std::error_code{1, pipe_error_category()});
             }
+
+            if (buffer.has_data()) {
             result += buffer.unload_line();
         }
-
+        }
         return expect_string{result};
     }
 

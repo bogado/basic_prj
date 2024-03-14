@@ -1,3 +1,4 @@
+#include "catch2/catch_test_macros.hpp"
 #include "test_data/line_data.hpp"
 #include <catch2/catch_all.hpp>
 
