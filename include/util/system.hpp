@@ -147,7 +147,12 @@ struct Args {
 
     void push_front(is_string auto value)
     {
-        data_source.insert(std::begin(data_source), value);
+        if constexpr (std::same_as<char *, std::remove_cv_t<decltype(value)>>) {
+            if (value == nullptr) {
+                return;
+            }
+        }
+        data_source.insert(std::begin(data_source), std::string{value});
         update_c();
     }
 
