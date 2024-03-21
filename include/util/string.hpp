@@ -26,12 +26,12 @@ struct basic_static_string {
     std::size_t length;
 
     template <std::size_t LENGTH>
-	consteval basic_static_string(const value_type (&s)[LENGTH])
+	constexpr basic_static_string(const value_type (&s)[LENGTH])
 	    : content(s)
         , length(LENGTH)
     {}
 
-    consteval basic_static_string(const value_type* s, std::size_t len)
+    constexpr basic_static_string(const value_type* s, std::size_t len)
         : content(s)
         , length(len)
     {}
@@ -51,7 +51,7 @@ using static_string = basic_static_string<char>;
 
 namespace literals {
 
-auto consteval operator ""_str(const char* data, std::size_t len)
+static_string constexpr operator ""_str(const char* data, std::size_t len)
 {
     return static_string{data, len};
 }
@@ -62,6 +62,10 @@ namespace test {
 
 static constexpr auto test = basic_static_string("test");
 static_assert(test.size() == 5); // The final '\0' is included.
+using namespace literals;
+
+static constexpr auto test2 = "test2"_str;
+static_assert(test2.size() == 5); // No \0 is included
 
 }  // namespace literals
 
