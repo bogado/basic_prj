@@ -79,6 +79,7 @@ function(set_project_warnings project_name)
       -Wno-ignored-attributes # We can ignore attributes
       -fdiagnostics-color=auto
       -fconcepts-diagnostics-depth=20
+      -Wno-error=null-dereference
   )
 
   if(MSVC)

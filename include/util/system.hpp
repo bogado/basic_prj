@@ -147,7 +147,12 @@ struct Args {
 
     void push_front(is_string auto value)
     {
-        data_source.insert(std::begin(data_source), value);
+        if constexpr (std::same_as<char *, std::remove_cv_t<decltype(value)>>) {
+            if (value == nullptr) {
+                return;
+            }
+        }
+        data_source.insert(std::begin(data_source), std::string{value});
         update_c();
     }
 
@@ -251,6 +256,7 @@ class spawn {
     posix_spawn_file_actions_t file_actions{};
     posix_spawnattr_t    attributes{};
     pid_t pid{-1};
+    fs::path work_directory{"."};
 
     template <lookup LOOKUP>
     static constexpr auto posix_spawn {
@@ -281,9 +287,6 @@ class spawn {
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*>("posix_spawn_file_actions_destroy", ::posix_spawn_file_actions_destroy)
     };
 
-    constexpr static auto spawn_file_actions_addchdir{
-        throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, const char *>("posix_spawn_file_actions_addchdir", ::posix_spawn_file_actions_addchdir_np)
-    };
 
     constexpr static auto spawn_file_actions_addclose{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, int>("posix_spawn_file_actions_addclose", ::posix_spawn_file_actions_addclose)
@@ -303,8 +306,22 @@ class spawn {
 
     auto do_spawn(lookup path_lookup, char *cmd, char * const * args, char * const * env, std::source_location source = std::source_location::current())
     {
-        if (env == nullptr) {
+        struct current_dir {
+            current_dir(fs::path dir) : 
+                old{fs::current_path()}
+            {
+                fs::current_path(dir);
+            }
 
+            ~current_dir()
+            {
+                fs::current_path(old);
+            }
+
+            fs::path old;
+        } chdir{work_directory};
+
+        if (env == nullptr) {
             env = ::environ;
         }
         return function(path_lookup)(&pid, cmd, &file_actions, &attributes, args, env, source); 
@@ -329,8 +346,8 @@ public:
         spawnattr_destroy(&attributes);
     }
 
-    void cwd(fs::path dir, std::source_location source = std::source_location::current()) {
-        spawn_file_actions_addchdir(&file_actions, dir.native().c_str(), source);
+    void cwd(fs::path dir) {
+        work_directory = dir;
     }
 
     void setup_dup2(int fromFd, int toFd, std::source_location source = std::source_location::current()) {
