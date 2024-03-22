@@ -9,6 +9,7 @@
 
 #include <concepts>
 #include <stdexcept>
+#include <system_error>
 #include <utility>
 #include <array>
 #include <expected>
@@ -56,6 +57,48 @@ operator not(io_direction dir)
     default:
         return BOTH;
     }
+}
+
+inline std::error_category& pipe_error_category() {
+    struct pipe_error_category : std::error_category {
+        const char * name() const noexcept override
+        {
+            return "VB pipe";
+        }
+
+        std::string message(int ev) const noexcept override
+        {
+            switch (ev) {
+            case 0:
+                return "No problem";
+            case 1:
+                return "No data available";
+            default:
+                return "unexpected error code";
+
+            }
+        }
+
+        std::error_condition default_error_condition(int ev) const noexcept override 
+        {
+            return std::error_condition{ev, *this};
+        }
+
+        bool equivalent(int code, const std::error_condition &condition) const noexcept override
+        {
+            if (condition.category() == *this) {
+                return code == condition.value();
+            }
+            if (code == 0 && std::system_category().equivalent(0, condition)) {
+                return true;
+            }
+            return false;
+
+        }
+    };
+    static pipe_error_category instance{};
+
+    return instance; 
 }
 
 template <std::size_t BUFFER_SIZE = (4 * KB)>
@@ -123,14 +166,6 @@ private:
         to_fd = new_fd;
     }
 
-    bool can_be_read() const 
-    {
-        using namespace std::literals;
-        return (sys::poll(0ms, sys::poll_arg {
-            .fd = file_descriptors[index(READ)],
-            .events = POLLIN})[0] & POLLIN) != 0;
-    }
-
     constexpr int& ref_fd(io_direction dir)
     {
         if (dir == NONE || dir == BOTH) {
@@ -140,6 +175,17 @@ private:
         return file_descriptors.at(index(dir));
     }
 
+    bool can_be_read() const 
+    {
+        if (!is<io_direction::READ>()) {
+            return false;
+        }
+
+        using namespace std::literals;
+        return (sys::poll(0ms, sys::poll_arg {
+            .fd = file_descriptors[index(READ)],
+            .events = POLLIN})[0] & POLLIN) != 0;
+    }
 public:
     using expect_string = std::expected<std::string, std::error_code>;
     using unexpected = std::unexpected<std::error_code>;
@@ -245,12 +291,15 @@ public:
     }
 
     bool closed() const {
+        if (buffer.has_data()) {
+            return false;
+        }
         return (is<READ>()  && file_descriptors[index(READ)] == -1)
             && (is<WRITE>() && file_descriptors[index(WRITE)] == -1);
    }
 
     bool has_data() const {
-        return (buffer.has_data() || can_be_read());
+        return buffer.has_data() || can_be_read();
     }
 
     template <parse::can_be_outstreamed... DATA_Ts>
@@ -269,15 +318,19 @@ public:
     {
         auto result = std::string();
 
-        while (is<io_direction::READ>() && result.size() == 0 && result.back() != '\n')
+        while (result.size() == 0 && result.back() != '\n')
         {
-            if (!buffer.has_data() || can_be_read())
+            if (!buffer.has_data() && can_be_read())
             {
                 buffer_load();
+            } else if (!buffer.has_data()) {
+                return unexpected(std::error_code{1, pipe_error_category()});
             }
-            result += buffer.unload_line();
-        }
 
+            if (buffer.has_data()) {
+                result += buffer.unload_line();
+            }
+        }
         return expect_string{result};
     }
 

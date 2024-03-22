@@ -6,6 +6,7 @@
 #include <array>
 #include <cerrno>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
@@ -26,6 +27,12 @@
 #include <poll.h>
 
 #include "debug.hpp"
+
+#ifndef __USE_GNU
+extern "C" {
+    extern char ** environ;
+}
+#endif // !__USE_GNU
 
 namespace vb {
 
@@ -82,7 +89,11 @@ constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::a
             }
         } else if constexpr (TYPE == call_type::SPAWN) {
             if (result != 0) {
-                return throw_error(errno);
+                if (errno == 0) {
+                    return throw_error(result);
+                } else {
+                    return throw_error(errno);
+                }
             }
         } else if constexpr (TYPE == call_type::SIGNAL) {
             if (result == SIG_ERR) {
@@ -136,7 +147,12 @@ struct Args {
 
     void push_front(is_string auto value)
     {
-        data_source.insert(std::begin(data_source), value);
+        if constexpr (std::same_as<char *, std::remove_cv_t<decltype(value)>>) {
+            if (value == nullptr) {
+                return;
+            }
+        }
+        data_source.insert(std::begin(data_source), std::string{value});
         update_c();
     }
 
@@ -184,7 +200,7 @@ inline auto wait_pid(pid_t pid, int option = 0, std::source_location source = st
     constexpr auto sys_waitpid = throw_on_error<call_type::ERRNO, pid_t, int*, int>("waitpid", ::waitpid, std::array{ EAGAIN });
     int status{-1};
     int pid_r = sys_waitpid(pid, &status, option, source);
-    if (pid_r != pid || !WIFEXITED(status)) {
+    if (pid_r != pid) {
         return status_type{};
     }
     return WEXITSTATUS(status);
@@ -229,11 +245,20 @@ constexpr inline auto read    = throw_on_error<call_type::ERRNO, int, void*, std
 constexpr inline auto write   = throw_on_error<call_type::ERRNO, int, const void*, std::size_t>("write",  ::write);
 constexpr inline auto close   = throw_on_error<call_type::ERRNO, int>                          ("close",  ::close);
 constexpr inline auto open    = throw_on_error<call_type::ERRNO, const char*, int>             ("open",   ::open);
+constexpr inline auto fsync   = throw_on_error<call_type::ERRNO, int>                          ("fsync",  ::fsync);
+
+enum class lookup {
+    PATH,
+    NO_LOOKUP
+};
 
 class spawn {
     posix_spawn_file_actions_t file_actions{};
     posix_spawnattr_t    attributes{};
+    pid_t pid{-1};
+    fs::path work_directory{"."};
 
+    template <lookup LOOKUP>
     static constexpr auto posix_spawn {
         throw_on_error<
             call_type::SPAWN,
@@ -243,21 +268,30 @@ class spawn {
             const posix_spawnattr_t*,
             char * const *,
             char * const *
-       >("posix_spawn", ::posix_spawn)
+       >(std::string_view("spawnp").substr(0, LOOKUP == lookup::NO_LOOKUP ? 5 : 6), LOOKUP == lookup::NO_LOOKUP ? ::posix_spawn : ::posix_spawnp)
     };
+
+    static constexpr auto function(const lookup path_lookup) {
+        if (path_lookup == lookup::NO_LOOKUP) {
+            return posix_spawn<lookup::NO_LOOKUP>;
+        } else {
+            return posix_spawn<lookup::PATH>;
+        }
+    }
 
     constexpr static auto spawn_file_actions_init{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*>("posix_spawn_file_actions_init", ::posix_spawn_file_actions_init)
     };
+
     constexpr static auto spawn_file_actions_destroy{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*>("posix_spawn_file_actions_destroy", ::posix_spawn_file_actions_destroy)
     };
-    constexpr static auto spawn_file_actions_addchdir{
-        throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, const char *>("posix_spawn_file_actions_addchdir", ::posix_spawn_file_actions_addchdir_np)
-    };
+
+
     constexpr static auto spawn_file_actions_addclose{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, int>("posix_spawn_file_actions_addclose", ::posix_spawn_file_actions_addclose)
     };
+
     constexpr static auto spawn_file_actions_adddup2{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, int, int>("posix_spawn_file_actions_adddup2", ::posix_spawn_file_actions_adddup2)
     };
@@ -270,13 +304,28 @@ class spawn {
         throw_on_error<call_type::SPAWN, posix_spawnattr_t*>("posix_spawnattr_destroy", ::posix_spawnattr_destroy)
     };
 
-    auto do_spawn(char *cmd, char * const * args, char * const * env, std::source_location source = std::source_location::current())
+    auto do_spawn(lookup path_lookup, char *cmd, char * const * args, char * const * env, std::source_location source = std::source_location::current())
     {
-        pid_t result;
-        posix_spawn(&result, cmd, &file_actions, &attributes, args, env, source); 
-        return result;
+        struct current_dir {
+            current_dir(fs::path dir) : 
+                old{fs::current_path()}
+            {
+                fs::current_path(dir);
+            }
+
+            ~current_dir()
+            {
+                fs::current_path(old);
+            }
+
+            fs::path old;
+        } chdir{work_directory};
+
+        if (env == nullptr) {
+            env = ::environ;
+        }
+        return function(path_lookup)(&pid, cmd, &file_actions, &attributes, args, env, source); 
     }
-    
 
 public:
 
@@ -297,8 +346,8 @@ public:
         spawnattr_destroy(&attributes);
     }
 
-    void cwd(fs::path dir, std::source_location source = std::source_location::current()) {
-        spawn_file_actions_addchdir(&file_actions, dir.native().c_str(), source);
+    void cwd(fs::path dir) {
+        work_directory = dir;
     }
 
     void setup_dup2(int fromFd, int toFd, std::source_location source = std::source_location::current()) {
@@ -314,33 +363,37 @@ public:
         add_close(fromFd, source);
     }
 
-    int operator()(is_arguments_type auto args, std::source_location source = std::source_location::current())
+    int operator()(lookup path_lookup, is_arguments_type auto args, std::source_location source = std::source_location::current())
     {
         auto c_args = Args(args);
-        return do_spawn(c_args.arg0(), c_args.data(), nullptr, source); 
+        return do_spawn(path_lookup, c_args.arg0(), c_args.data(), nullptr, source); 
     }
 
-    int operator()(is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
+    int operator()(lookup path_lookup, is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
     {
         auto c_args = Args(args);
         auto c_env = Args(env);
-        return do_spawn(c_args.arg0(), c_args.data(), c_env.data(), source);
+        return do_spawn(path_lookup, c_args.arg0(), c_args.data(), c_env.data(), source);
     }
 
-    int operator()(fs::path exec, is_arguments_type auto args, std::source_location source = std::source_location::current())
+    int operator()(lookup path_lookup, fs::path exec, is_arguments_type auto args, std::source_location source = std::source_location::current())
     {
         auto c_args = Args(exec, args);
-        return do_spawn(c_args.arg0(), c_args.data(), nullptr, source);
+        return do_spawn(path_lookup, c_args.arg0(), c_args.data(), nullptr, source);
     }
 
-    int operator()(fs::path exec, is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
+    int operator()(lookup path_lookup, fs::path exec, is_arguments_type auto args, is_arguments_type auto env, std::source_location source = std::source_location::current())
     {
         auto c_args = Args(exec, args);
         auto c_env = Args(env);
         auto executable = exec.native();
-        return do_spawn(c_args.arg0(), c_args.data(), c_env.data(), source);
+        return do_spawn(path_lookup, c_args.arg0(), c_args.data(), c_env.data(), source);
     }
 
+    auto get_pid() const
+    {
+        return pid;
+    }
 };
 
 }}
