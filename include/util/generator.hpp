@@ -18,6 +18,7 @@ struct generator {
     using handle_type = std::coroutine_handle<promise_type>;
 
     handle_type handle;
+    bool done = false;
 
     struct promise_type {
         std::optional<value_type> current;
@@ -30,7 +31,11 @@ struct generator {
         }
 
         std::suspend_never  initial_suspend() noexcept { return {}; }
-        std::suspend_always   final_suspend() noexcept { done = true; return {}; }
+        std::suspend_always   final_suspend() noexcept
+        {
+            done = true;
+            return {};
+        }
 
         template <std::convertible_to<reference> YIELDED_TYPE>
         std::suspend_always yield_value(YIELDED_TYPE && yielded) noexcept
@@ -51,10 +56,12 @@ struct generator {
 
     bool resume()
     {
-        if (handle.done()) {
+        if (done) {
             return false;
         }
         handle.resume();
+        done = handle.done();
+        
         if (auto thrown = handle.promise().exception; thrown) {
             std::rethrow_exception(thrown);
         }
