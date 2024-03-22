@@ -20,7 +20,7 @@ struct generator {
     handle_type handle;
     value_type current;
 
-    generator(handle_type&& handle) :
+    generator(handle_type handle) :
         handle{handle},
         current{std::move(next())}
     {}
@@ -55,9 +55,6 @@ private:
  
     auto promise()
     {
-        if (handle.done()) {
-            return promise_type{{}, true};
-        }
         return handle.promise();
     }
 
