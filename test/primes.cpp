@@ -61,7 +61,8 @@ TEST_CASE("Prime generator", "[Prime][generator]")
     }
 
     BENCHMARK_ADVANCED("Prime generator")(Catch::Benchmark::Chronometer meter) {
-        auto prime_gen = primes(2).begin();
+        auto generator = primes(2);
+        auto prime_gen = generator.begin();
         meter.measure([&](){
             ++prime_gen;
             return *prime_gen;
