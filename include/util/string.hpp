@@ -6,6 +6,7 @@
 #include <limits>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 namespace vb {
 
@@ -14,58 +15,47 @@ concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::val
     std::is_array_v<STRING_TYPE> || std::same_as<STRING_TYPE, const char *>;
 
 // NOLINTBEGIN modernize-avoid-c-arrays
-template <typename VALUE_T, typename TRAITS = std::char_traits<VALUE_T>>
+template <typename VALUE_T, std::size_t LENGTH, typename TRAITS = std::char_traits<VALUE_T>>
 struct basic_static_string {
 	using traits_type      = TRAITS;
 	using value_type       = VALUE_T;
+    using size_type        = std::size_t;
 	using string_type      = std::basic_string<value_type, traits_type>;
 	using string_view_type = std::basic_string_view<value_type, traits_type>;
 	using value_limits     = std::numeric_limits<value_type>;
 
-    const VALUE_T* content;
-    std::size_t length;
+    static constexpr auto length = LENGTH;
 
-    template <std::size_t LENGTH>
+    VALUE_T content[length];
+
 	constexpr basic_static_string(const value_type (&s)[LENGTH])
-	    : content(s)
-        , length(LENGTH)
-    {}
+    {
+        std::copy_n(std::begin(s), LENGTH, std::begin(content));
+    }
 
-    constexpr basic_static_string(const value_type* s, std::size_t len)
-        : content(s)
-        , length(len)
-    {}
-
-	constexpr operator string_view_type() const {
-		return std::string_view{content, length};
+	constexpr explicit operator string_view_type() const {
+		return std::string_view{content, LENGTH};
 	}
 
-	constexpr auto size() const { return length; }
+	constexpr auto size() const { return LENGTH; }
 
-    constexpr auto operator<=>(const basic_static_string& other) const = default;
+    constexpr auto operator<=>(const basic_static_string& other) const
+    {
+        return static_cast<string_view_type>(*this) <=> static_cast<string_view_type>(other);
+    }
+
     constexpr bool operator==(const basic_static_string& other) const = default;
     constexpr bool operator!=(const basic_static_string& other) const = default;
 };
 
-using static_string = basic_static_string<char>;
+template <std::size_t SIZE>
+using static_string = basic_static_string<char, SIZE>;
 
-namespace literals {
-
-static_string constexpr operator ""_str(const char* data, std::size_t len)
-{
-    return static_string{data, len};
-}
-
-}
 
 namespace test {
 
-static constexpr auto test = basic_static_string("test");
-static_assert(test.size() == 5); // The final '\0' is included.
-using namespace literals;
-
-static constexpr auto test2 = "test2"_str;
-static_assert(test2.size() == 5); // No \0 is included
+static constexpr auto test = basic_static_string("123");
+static_assert(test.size() == 4); // The final '\0' is included.
 
 }  // namespace literals
 
