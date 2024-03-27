@@ -5,6 +5,7 @@ add_executable(utils_test
     buffer.cpp
     pipe.cpp
     primes.cpp
+    options.cpp
     execution.cpp
 )
 

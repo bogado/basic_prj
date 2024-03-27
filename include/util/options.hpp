@@ -2,15 +2,17 @@
 #ifndef INCLUDED_OPTIONS_HPP
 #define INCLUDED_OPTIONS_HPP
 
+#include <concepts>
 #include <optional>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
 #include <util/string.hpp>
 
-namespace vb::options {
+namespace vb::opt {
 
 template <typename OPTION_DESCRIPTION>
 concept is_option_description = requires(const OPTION_DESCRIPTION value) {
@@ -84,7 +86,13 @@ concept is_option = requires (const OPTION_T value) {
     { value->value() } -> std::same_as<typename OPTION_T::value_type>;
 };
 
-template<typename VALUE_T, is_string auto DESCRIPTION>
+template <std::constructible_from<> VALUE_T>
+auto default_builder() 
+-> VALUE_T 
+{ return {}; }
+
+template<typename VALUE_T, static_string DESCRIPTION, std::invocable auto DEFAULT_BUILDER = &default_builder<VALUE_T>>
+requires std::same_as<std::invoke_result_t<decltype(DEFAULT_BUILDER)>, VALUE_T>
 struct base_option {
     using value_t = VALUE_T;
     static constexpr auto option_description = opt_description{DESCRIPTION};
@@ -95,26 +103,26 @@ struct base_option {
 
     std::optional<value_t> content;
 
+    static constexpr auto parse(std::string_view str)
+    {
+        return from_string<value_t>(str);
+    }
+
     auto value() const
         -> value_t
     { 
-        return content.value_or({});
+        return content.value_or(DEFAULT_BUILDER());
     }
 
-    bool valid() const {
+    bool valid() const
+    {
         return content.has_value();
     }
 };
 
-template <typename VALUE_T, static_string DESCRIPTION>
-constexpr auto option(VALUE_T&& val)
-{
-    return base_option<VALUE_T, DESCRIPTION>{std::forward<VALUE_T>(val)};
-}
-
 namespace test {
-    static_assert(is_option<base_option<bool, "t|test:testing"_opt>>);
-    static_assert(is_option<decltype(option<bool, "t|test:testing"_opt>(true))>);
+    constexpr auto test_option = base_option<bool, "t|test:testing the options">{};
+    static_assert(is_option<base_option<bool, "t|test:testing">>);
 }
 
 template <is_option ... OPTIONS>

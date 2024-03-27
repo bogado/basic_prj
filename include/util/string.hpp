@@ -49,7 +49,12 @@ struct basic_static_string {
 };
 
 template <std::size_t SIZE>
-using static_string = basic_static_string<char, SIZE>;
+struct static_string : basic_static_string<char, SIZE> 
+{
+    static_string(char (&str)[SIZE]) 
+        : basic_static_string<char, SIZE>(str)
+    {}
+};
 
 
 namespace test {
