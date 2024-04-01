@@ -38,7 +38,7 @@ constexpr auto to_string(const VALUE_T& value)
 
 template <typename PARSEABLE>
 concept parseable = requires (const std::string_view str) {
-    { from_string<PARSEABLE>(str) } -> std::same_as<PARSEABLE>;
+    { parse::from_string<PARSEABLE>(str) } -> std::same_as<PARSEABLE>;
 };
 
 template <typename STRINGABLE>
