@@ -3,6 +3,7 @@
 #define INCLUDED_OPTIONS_HPP
 
 #include <concepts>
+#include <functional>
 #include <optional>
 #include <string_view>
 #include <tuple>
@@ -10,7 +11,8 @@
 #include <utility>
 #include <variant>
 
-#include <util/string.hpp>
+#include "util/string.hpp"
+#include "util/converters.hpp"
 
 namespace vb::opt {
 
@@ -21,40 +23,31 @@ concept is_option_description = requires(const OPTION_DESCRIPTION value) {
     { value.description() } -> is_string;
 };
 
+template <std::size_t SIZE>
 struct opt_description {
-    using position_type = std::string_view::size_type;
+    using position_type = std::size_t;
 
-    std::string_view data;
+    static_string<SIZE> data;
     position_type start_of_description;
 
-    constexpr opt_description(std::string_view dta)
+    constexpr opt_description(static_string<SIZE> dta)
         : data{dta}
-        , start_of_description{data.find_first_of(":") + 1}
-    {
-        if (data[1] != '|' || start_of_description >= data.size())
-        {
-            throw "option syntax error";
-        }
-    }
-
-    template <std::size_t SIZE>
-    constexpr opt_description(const char (&dta)[SIZE])
-        : opt_description{std::string_view{dta, SIZE}}
+        , start_of_description{data.view().find_first_of(':') + 1}
     {}
 
     constexpr auto key() const 
     {
-        return data.substr(2);
+        return data.view().substr(2);
     }
 
     constexpr auto abrev() const 
     {
-        return data[0];
+        return data.view()[0];
     }
 
     constexpr auto description() const 
     {
-        return data.substr(start_of_description);
+        return data.view().substr(start_of_description);
     }
 
     constexpr bool operator== (std::string k)
@@ -68,9 +61,10 @@ struct opt_description {
     }
 };
 
-constexpr auto operator""_opt(const char* option, std::size_t size)
+template <static_string OPT>
+constexpr auto operator""_opt()
 {
-    return opt_description{std::string_view{option, size}};
+    return opt_description<decltype(OPT)::length>{OPT};
 }
 
 namespace test {
@@ -82,7 +76,7 @@ concept is_option = requires (const OPTION_T value) {
     typename OPTION_T::value_type;
     { OPTION_T::description() } -> is_option_description;
     { OPTION_T::parse(std::string("")) } -> std::same_as<OPTION_T>;
-    { value.valid() } -> std::convertible_to<bool>;
+    { value.present() } -> std::convertible_to<bool>;
     { value->value() } -> std::same_as<typename OPTION_T::value_type>;
 };
 
@@ -91,38 +85,45 @@ auto default_builder()
 -> VALUE_T 
 { return {}; }
 
-template<typename VALUE_T, static_string DESCRIPTION, std::invocable auto DEFAULT_BUILDER = &default_builder<VALUE_T>>
-requires std::same_as<std::invoke_result_t<decltype(DEFAULT_BUILDER)>, VALUE_T>
+template<typename VALUE_T, static_string DESCRIPTION>
 struct base_option {
-    using value_t = VALUE_T;
+    using value_type = VALUE_T;
     static constexpr auto option_description = opt_description{DESCRIPTION};
 
     static constexpr auto description() {
         return option_description;
     }
 
-    std::optional<value_t> content;
+    base_option(value_type& original) :
+        storage{original}
+    {}
 
-    static constexpr auto parse(std::string_view str)
+    std::reference_wrapper<value_type> storage;
+    bool updated = false;
+
+    constexpr auto parse(std::string_view str)
     {
-        return from_string<value_t>(str);
+        if constexpr (parse::parseable<value_type>) {
+            return from_string<value_type>(str);
+        }
     }
 
     auto value() const
-        -> value_t
-    { 
-        return content.value_or(DEFAULT_BUILDER());
+        -> value_type
+    {
+        return storage.get();
     }
 
-    bool valid() const
+    bool present() const
     {
-        return content.has_value();
+        return updated;
     }
 };
 
 namespace test {
-    constexpr auto test_option = base_option<bool, "t|test:testing the options">{};
-    static_assert(is_option<base_option<bool, "t|test:testing">>);
+    //constinit inline bool original = True;
+    //constexpr auto test_option = "t|test:testing the options"_opt << original;
+    //static_assert(is_option<base_option<bool, "t|test:testing">>);
 }
 
 template <is_option ... OPTIONS>
