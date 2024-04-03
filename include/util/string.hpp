@@ -17,7 +17,7 @@ concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::val
     std::is_array_v<STRING_TYPE> || std::same_as<STRING_TYPE, const char *>;
 
 // NOLINTBEGIN modernize-avoid-c-arrays
-template <typename VALUE_T, std::size_t LENGTH, typename TRAITS = std::char_traits<VALUE_T>>
+template <std::size_t LENGTH, typename VALUE_T = char, typename TRAITS = std::char_traits<VALUE_T>>
 requires (LENGTH > 0)
 struct basic_static_string {
     using storage_type     = std::array<VALUE_T, LENGTH>;
@@ -35,7 +35,7 @@ struct basic_static_string {
 
     // No escape from c arrays here
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,cppcoreguidelines-avoid-c-arrays) 
-	constexpr static_string(const value_type (&s)[LENGTH])
+	constexpr basic_static_string(const value_type (&s)[LENGTH])
     {
         std::copy_n(std::begin(s), LENGTH, std::begin(content));
     }
