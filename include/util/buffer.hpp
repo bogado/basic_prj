@@ -15,6 +15,10 @@ constexpr inline auto MB = KB*KB;
 constexpr inline auto GB = MB*KB;
 
 namespace sys {
+#ifdef PAGE_SIZE
+#undef PAGE_SIZE
+#endif
+
 static constexpr auto PAGE_SIZE = 4 * KB;
 }
 

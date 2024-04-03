@@ -17,9 +17,9 @@ concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::val
     std::is_array_v<STRING_TYPE> || std::same_as<STRING_TYPE, const char *>;
 
 // NOLINTBEGIN modernize-avoid-c-arrays
-template <typename VALUE_T, std::size_t LENGTH, typename TRAITS = std::char_traits<VALUE_T>>
+template <std::size_t LENGTH, typename VALUE_T = char, typename TRAITS = std::char_traits<VALUE_T>>
 requires (LENGTH > 0)
-struct basic_static_string {
+struct static_string {
     using storage_type     = std::array<VALUE_T, LENGTH>;
 	using traits_type      = TRAITS;
 	using value_type       = VALUE_T;

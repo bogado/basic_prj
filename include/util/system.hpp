@@ -247,6 +247,34 @@ constexpr inline auto close   = throw_on_error<call_type::ERRNO, int>           
 constexpr inline auto open    = throw_on_error<call_type::ERRNO, const char*, int>             ("open",   ::open);
 constexpr inline auto fsync   = throw_on_error<call_type::ERRNO, int>                          ("fsync",  ::fsync);
 
+struct at_dir {
+    fs::path old_current;
+    at_dir(fs::path new_dir) :
+        old_current{fs::current_path()}
+    {
+        fs::current_path(new_dir);
+    }
+
+    at_dir(const at_dir&) = delete;
+    at_dir(at_dir&& other) :
+        old_current{std::move(other.old_current)}
+    {
+        other.old_current = "";
+    }
+
+    at_dir& operator=(at_dir&& other) = delete;
+    at_dir& operator=(at_dir& other) = delete;
+
+    ~at_dir()
+    {
+        if (old_current.empty()) {
+            return;
+        }
+
+        fs::current_path(old_current);
+    }
+};
+
 enum class lookup {
     PATH,
     NO_LOOKUP
@@ -287,7 +315,6 @@ class spawn {
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*>("posix_spawn_file_actions_destroy", ::posix_spawn_file_actions_destroy)
     };
 
-
     constexpr static auto spawn_file_actions_addclose{
         throw_on_error<call_type::SPAWN, posix_spawn_file_actions_t*, int>("posix_spawn_file_actions_addclose", ::posix_spawn_file_actions_addclose)
     };
@@ -306,20 +333,7 @@ class spawn {
 
     auto do_spawn(lookup path_lookup, char *cmd, char * const * args, char * const * env, std::source_location source = std::source_location::current())
     {
-        struct current_dir {
-            current_dir(fs::path dir) : 
-                old{fs::current_path()}
-            {
-                fs::current_path(dir);
-            }
-
-            ~current_dir()
-            {
-                fs::current_path(old);
-            }
-
-            fs::path old;
-        } chdir{work_directory};
+        at_dir change{work_directory};
 
         if (env == nullptr) {
             env = ::environ;
