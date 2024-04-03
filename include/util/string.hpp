@@ -18,6 +18,7 @@ concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::val
 
 // NOLINTBEGIN modernize-avoid-c-arrays
 template <typename VALUE_T, std::size_t LENGTH, typename TRAITS = std::char_traits<VALUE_T>>
+requires (LENGTH > 0)
 struct basic_static_string {
     using storage_type     = std::array<VALUE_T, LENGTH>;
 	using traits_type      = TRAITS;
@@ -32,39 +33,34 @@ struct basic_static_string {
 
     storage_type content;
 
-	constexpr basic_static_string(const value_type (&s)[LENGTH])
+    // No escape from c arrays here
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,cppcoreguidelines-avoid-c-arrays) 
+	constexpr static_string(const value_type (&s)[LENGTH])
     {
         std::copy_n(std::begin(s), LENGTH, std::begin(content));
     }
 
-	constexpr explicit operator string_view_type() const {
-		return std::string_view{content, LENGTH};
+	constexpr auto view() const 
+        -> string_view_type
+    {
+		return string_view_type{content.data(), LENGTH};
 	}
 
-	constexpr auto size() const { return LENGTH; }
+	constexpr auto size() const { return LENGTH - (*std::rbegin(content) == '\0'? 1: 0); }
 
-    constexpr auto operator<=>(const basic_static_string& other) const
+    constexpr auto operator<=>(const static_string& other) const
     {
-        return static_cast<string_view_type>(*this) <=> static_cast<string_view_type>(other);
+        return view() <=> other.view();
     }
 
-    constexpr bool operator==(const basic_static_string& other) const = default;
-    constexpr bool operator!=(const basic_static_string& other) const = default;
+    constexpr bool operator==(const static_string& other) const = default;
+    constexpr bool operator!=(const static_string& other) const = default;
 };
-
-template <std::size_t SIZE>
-struct static_string : basic_static_string<char, SIZE> 
-{
-    static_string(char (&str)[SIZE]) 
-        : basic_static_string<char, SIZE>(str)
-    {}
-};
-
 
 namespace test {
 
-static constexpr auto test = basic_static_string("123");
-static_assert(test.size() == 4); // The final '\0' is included.
+static constexpr auto test = static_string("123");
+static_assert(test.size() == 3); // The final '\0' is included.
 
 }  // namespace literals
 
