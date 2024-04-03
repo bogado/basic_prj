@@ -7,6 +7,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <algorithm>
+#include <ranges>
 
 namespace vb {
 
@@ -17,8 +19,10 @@ concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::val
 // NOLINTBEGIN modernize-avoid-c-arrays
 template <typename VALUE_T, std::size_t LENGTH, typename TRAITS = std::char_traits<VALUE_T>>
 struct basic_static_string {
+    using storage_type     = std::array<VALUE_T, LENGTH>;
 	using traits_type      = TRAITS;
 	using value_type       = VALUE_T;
+    using char_type        = VALUE_T;
     using size_type        = std::size_t;
 	using string_type      = std::basic_string<value_type, traits_type>;
 	using string_view_type = std::basic_string_view<value_type, traits_type>;
@@ -26,7 +30,7 @@ struct basic_static_string {
 
     static constexpr auto length = LENGTH;
 
-    VALUE_T content[length];
+    storage_type content;
 
 	constexpr basic_static_string(const value_type (&s)[LENGTH])
     {
