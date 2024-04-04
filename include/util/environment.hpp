@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "util/converters.hpp"
+#include "util/string.hpp"
 
 namespace vb {
 
@@ -14,43 +15,52 @@ using namespace std::literals;
 
 struct env {
 private:
-    std::string_view var_name;
-    std::optional<std::string_view> val;
+    std::string_view variable_name;
+    std::string_view value;
+    std::string_view content;
     bool fetched = false;
 
-    auto name_c()
-    -> std::pair<const char *, std::string>
+    static constexpr auto equal_pos(const is_string auto& content)
     {
-        if (!var_name.empty() && var_name.back() == '\0') {
-            return { var_name.data(), {} };
+        return std::string_view(content).find_first_of('=');
+    }
+
+    static constexpr auto value_pos(const is_string auto& content)
+    {
+        auto pos = equal_pos(content);
+        if (pos == std::string_view::npos) {
+            return content.size();
         }
 
-        auto result = std::pair{
-            "",
-            std::string(var_name),
-        };
-
-        result.first = result.second.c_str();
-        return result;
+        return std::min(content.size(), pos +1);
     }
 
 public:
-    constexpr explicit env(std::string_view name_) noexcept :
-        var_name(name_),
-        val{std::nullopt},
-        fetched(false)
+    constexpr explicit env(std::string_view name_or_content) noexcept :
+        variable_name(name_or_content.substr(0, equal_pos(name_or_content))),
+        value(name_or_content.substr(value_pos(name_or_content))),
+        content(value.empty() ? value : name_or_content),
+        fetched(!value.empty())
     {
-        if (!std::is_constant_evaluated()) {
+        if (!fetched && !std::is_constant_evaluated()) {
             init();
         }
     }
 
+    template <std::size_t SIZE>
+    constexpr explicit env(static_string<SIZE> name_or_content) noexcept :
+        env{name_or_content}
+    {}
+
     constexpr void init()
     {
         if (fetched) return;
-        auto data = std::getenv(name_c().first);
+        auto var_name = std::string{variable_name};
+        auto data = std::getenv(var_name.c_str());
         if (data != nullptr) {
-            val = data;
+            value = data;
+        } else {
+            value = std::string_view();
         }
         fetched = true;
     }
@@ -62,11 +72,11 @@ public:
             init();
         }
 
-        if (!val.has_value() || val->empty()) {
+        if (value.empty()) {
             return default_;
         }
 
-        return vb::parse::from_string<TYPE>(val.value());
+        return vb::parse::from_string<TYPE>(value);
     }
 
     template <vb::parse::parseable TYPE>
@@ -78,17 +88,25 @@ public:
             copy.init();
             return copy.value_or(default_);
         }
-        return vb::parse::from_string<TYPE>(val.value());
+        return vb::parse::from_string<TYPE>(value);
     }
 
     constexpr auto name() const
     {
-        return var_name;
+        return variable_name;
     }
 
     constexpr auto to_string() const
+        -> std::string
     {
-        return std::string(var_name) + "="s + std::string(val.value_or(""sv));
+        auto result = std::string{content};
+        if (result.empty()) 
+        {
+            result.append(variable_name);
+            result.append("=");
+            result.append(value_or<std::string>());
+        }
+        return result;
     }
 
 };
@@ -98,7 +116,7 @@ namespace literals {
     constexpr auto operator""_env(const char* name, std::size_t len)
         -> env
     {
-        return env(std::string_view(name, len+1));
+        return env(std::string_view(name, len));
     }
 }
 
