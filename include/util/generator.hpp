@@ -20,9 +20,9 @@ struct generator {
     handle_type handle;
     value_type current;
 
-    generator(handle_type handle) :
-        handle{handle},
-        current{std::move(next())}
+    generator(handle_type handle_) :
+        handle{handle_},
+        current{}
     {}
 
     struct promise_type {
