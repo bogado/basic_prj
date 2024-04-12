@@ -53,6 +53,8 @@ struct static_string {
         return view() <=> other.view();
     }
 
+    constexpr auto array() const { return content; }
+
     constexpr bool operator==(const static_string& other) const = default;
     constexpr bool operator!=(const static_string& other) const = default;
 };
