@@ -19,7 +19,7 @@ concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::val
 // NOLINTBEGIN modernize-avoid-c-arrays
 template <std::size_t LENGTH, typename VALUE_T = char, typename TRAITS = std::char_traits<VALUE_T>>
 requires (LENGTH > 0)
-struct basic_static_string {
+struct static_string {
     using storage_type     = std::array<VALUE_T, LENGTH>;
 	using traits_type      = TRAITS;
 	using value_type       = VALUE_T;
@@ -53,6 +53,8 @@ struct basic_static_string {
         return view() <=> other.view();
     }
 
+    constexpr auto array() const { return content; }
+
     constexpr bool operator==(const static_string& other) const = default;
     constexpr bool operator!=(const static_string& other) const = default;
 };
@@ -80,9 +82,6 @@ concept is_string = requires {
 
 template <std::size_t N>
 using static_string_list = std::array<std::string_view, N>;
-
-template <static_string STR>
-static constexpr auto static_view = std::basic_string_view<typename decltype(STR)::value_type, typename decltype(STR)::traits_type>{STR};
 
 }  // namespace vb
 
