@@ -35,7 +35,7 @@ struct static_string {
 
     // No escape from c arrays here
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,cppcoreguidelines-avoid-c-arrays) 
-	constexpr basic_static_string(const value_type (&s)[LENGTH])
+	constexpr static_string(const value_type (&s)[LENGTH])
     {
         std::copy_n(std::begin(s), LENGTH, std::begin(content));
     }
