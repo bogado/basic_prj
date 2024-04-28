@@ -14,16 +14,10 @@ struct generator {
     using value_type = VALUE_TYPE;
     using reference =  REFERENCE_TYPE;
 
-    struct promise_type;
-    using handle_type = std::coroutine_handle<promise_type>;
-
-    handle_type handle;
-    bool done = false;
-
     struct promise_type {
-        std::optional<value_type> current;
         std::exception_ptr exception;
         bool done = false;
+        std::optional<value_type> current;
 
         generator get_return_object() noexcept
         {
@@ -49,10 +43,9 @@ struct generator {
         }
     };
 
-    auto& current()
-    {
-        return handle.promise().current;
-    }
+    using handle_type = std::coroutine_handle<promise_type>;
+    handle_type handle;
+    bool done = false;
 
     bool resume()
     {
@@ -70,16 +63,15 @@ struct generator {
 
     value_type next()
     {
-        if (!current().has_value()) {
+        if (!handle.promise().current.has_value()) {
             resume();
         }
-        auto& opt = current();
-        if (!opt.has_value()) {
+
+        if (!handle.promise().current.has_value()) {
             return {};
         }
-        value_type val = opt.value();
-        opt.reset();
-        return val;
+
+        return std::move(handle.promise().current).value();
     }
 
     explicit operator bool()
@@ -93,21 +85,19 @@ struct generator {
         using reference = generator::reference;
 
         generator *self = nullptr;
-        value_type ref{};
+        value_type value{};
 
         iterator(generator* s) :
             self{s},
-            ref{self->current().value_or(value_type{})}
-        {
-            self->next();
-        }
+            value{self->next()}
+        {}
 
         reference operator*() const {
-            return ref;
+            return value;
         }
 
         iterator& operator++() {
-            ref = self->next();
+            value = self->next();
             return *this;
         }
 
