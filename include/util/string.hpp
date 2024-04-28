@@ -6,6 +6,9 @@
 #include <limits>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <algorithm>
+#include <ranges>
 
 namespace vb {
 
@@ -14,58 +17,52 @@ concept is_string_type = std::same_as<std::char_traits<typename STRING_TYPE::val
     std::is_array_v<STRING_TYPE> || std::same_as<STRING_TYPE, const char *>;
 
 // NOLINTBEGIN modernize-avoid-c-arrays
-template <typename VALUE_T, typename TRAITS = std::char_traits<VALUE_T>>
-struct basic_static_string {
+template <std::size_t LENGTH, typename VALUE_T = char, typename TRAITS = std::char_traits<VALUE_T>>
+requires (LENGTH > 0)
+struct static_string {
+    using storage_type     = std::array<VALUE_T, LENGTH>;
 	using traits_type      = TRAITS;
 	using value_type       = VALUE_T;
+    using char_type        = VALUE_T;
+    using size_type        = std::size_t;
 	using string_type      = std::basic_string<value_type, traits_type>;
 	using string_view_type = std::basic_string_view<value_type, traits_type>;
 	using value_limits     = std::numeric_limits<value_type>;
 
-    const VALUE_T* content;
-    std::size_t length;
+    static constexpr auto length = LENGTH;
 
-    template <std::size_t LENGTH>
-	constexpr basic_static_string(const value_type (&s)[LENGTH])
-	    : content(s)
-        , length(LENGTH)
-    {}
+    storage_type content;
 
-    constexpr basic_static_string(const value_type* s, std::size_t len)
-        : content(s)
-        , length(len)
-    {}
+    // No escape from c arrays here
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,cppcoreguidelines-avoid-c-arrays) 
+	constexpr static_string(const value_type (&s)[LENGTH])
+    {
+        std::copy_n(std::begin(s), LENGTH, std::begin(content));
+    }
 
-	constexpr operator string_view_type() const {
-		return std::string_view{content, length};
+	constexpr auto view() const 
+        -> string_view_type
+    {
+		return string_view_type{content.data(), LENGTH};
 	}
 
-	constexpr auto size() const { return length; }
+	constexpr auto size() const { return LENGTH - (*std::rbegin(content) == '\0'? 1: 0); }
 
-    constexpr auto operator<=>(const basic_static_string& other) const = default;
-    constexpr bool operator==(const basic_static_string& other) const = default;
-    constexpr bool operator!=(const basic_static_string& other) const = default;
+    constexpr auto operator<=>(const static_string& other) const
+    {
+        return view() <=> other.view();
+    }
+
+    constexpr auto array() const { return content; }
+
+    constexpr bool operator==(const static_string& other) const = default;
+    constexpr bool operator!=(const static_string& other) const = default;
 };
-
-using static_string = basic_static_string<char>;
-
-namespace literals {
-
-static_string constexpr operator ""_str(const char* data, std::size_t len)
-{
-    return static_string{data, len};
-}
-
-}
 
 namespace test {
 
-static constexpr auto test = basic_static_string("test");
-static_assert(test.size() == 5); // The final '\0' is included.
-using namespace literals;
-
-static constexpr auto test2 = "test2"_str;
-static_assert(test2.size() == 5); // No \0 is included
+static constexpr auto test = static_string("123");
+static_assert(test.size() == 3); // The final '\0' is included.
 
 }  // namespace literals
 
@@ -85,9 +82,6 @@ concept is_string = requires {
 
 template <std::size_t N>
 using static_string_list = std::array<std::string_view, N>;
-
-template <static_string STR>
-static constexpr auto static_view = std::basic_string_view<typename decltype(STR)::value_type, typename decltype(STR)::traits_type>{STR};
 
 }  // namespace vb
 

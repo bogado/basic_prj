@@ -14,10 +14,21 @@ struct generator {
     using value_type = VALUE_TYPE;
     using reference =  REFERENCE_TYPE;
 
+    struct promise_type;
+    using handle_type = std::coroutine_handle<promise_type>;
+
+    handle_type handle;
+    value_type current;
+
+    generator(handle_type handle_) :
+        handle{handle_},
+        current{}
+    {}
+
     struct promise_type {
-        std::exception_ptr exception;
+        std::exception_ptr exception{};
         bool done = false;
-        std::optional<value_type> current;
+        std::optional<value_type> current{};
 
         generator get_return_object() noexcept
         {
@@ -38,23 +49,26 @@ struct generator {
             return {};
         }
 
-        void unhandled_exception() {
+        void unhandled_exception() 
+        {
             exception = std::current_exception();
         }
     };
 
-    using handle_type = std::coroutine_handle<promise_type>;
-    handle_type handle;
-    bool done = false;
+private:
+ 
+    auto promise()
+    {
+        return handle.promise();
+    }
 
     bool resume()
     {
         if (done) {
             return false;
         }
+
         handle.resume();
-        done = handle.done();
-        
         if (auto thrown = handle.promise().exception; thrown) {
             std::rethrow_exception(thrown);
         }
@@ -63,21 +77,16 @@ struct generator {
 
     value_type next()
     {
-        if (!handle.promise().current.has_value()) {
-            resume();
-        }
-
-        if (!handle.promise().current.has_value()) {
+        if (!resume() || !promise().current.has_value()) {
             return {};
         }
-
-        return std::move(handle.promise().current).value();
+        return promise().current.value();
     }
+public:
 
     explicit operator bool()
     {
-        resume();
-        return handle.done();
+        return !handle.done();
     }
 
     struct iterator {
@@ -93,11 +102,11 @@ struct generator {
         {}
 
         reference operator*() const {
-            return value;
+            return self->current;
         }
 
         iterator& operator++() {
-            value = self->next();
+            self->current = self->next();
             return *this;
         }
 

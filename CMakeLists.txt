@@ -48,4 +48,8 @@ include(cmake/StaticAnalyzers.cmake)
 target_include_directories(basic_prj INTERFACE include)
 target_link_libraries(basic_prj INTERFACE project_options)
 
-add_subdirectory(test)
+set(UTILS_TEST_ENABLED FALSE CACHE BOOL "Enable building the tests for the utilities")
+
+if(UTILS_TEST_ENABLED) 
+    add_subdirectory(test)
+endif()
