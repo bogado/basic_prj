@@ -1,8 +1,6 @@
 #ifndef CONVERTERS_HPP_INCLUDED
 #define CONVERTERS_HPP_INCLUDED
 
-#include "string.hpp"
-
 #include <iostream>
 #include <sstream>
 #include <string_view>
