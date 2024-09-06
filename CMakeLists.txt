@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.25)
 project (basic_prj LANGUAGES CXX)
 
 add_library(basic_prj INTERFACE 
@@ -49,6 +50,8 @@ target_include_directories(basic_prj INTERFACE include)
 target_link_libraries(basic_prj INTERFACE project_options)
 
 set(UTILS_TEST_ENABLED FALSE CACHE BOOL "Enable building the tests for the utilities")
+
+install(TARGETS basic_prj)
 
 if(UTILS_TEST_ENABLED) 
     add_subdirectory(test)
