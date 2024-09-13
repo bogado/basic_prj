@@ -16,10 +16,12 @@ namespace vb {
 
 using namespace std::literals;
 
+template <std::size_t SIZE>
 struct env_name {
     static constexpr auto SEPARATOR = '=';
 private:
-    std::variant<std::string, std::string_view> name;
+    using string_type = std::conditional_t<SIZE == 0, std::string, static_string<SIZE>>;
+    string_type name;
 
     constexpr auto data() const
     {
@@ -31,9 +33,8 @@ public:
         name{std::string_view{name_.substr(0, name_.find(SEPARATOR))}}
     {}
 
-    template <std::size_t SIZE>
-    consteval explicit env_name(const char name_[SIZE]) noexcept :
-        env_name{std::string_view{name_, SIZE}}
+    constexpr explicit env_name(const string_type name_) noexcept :
+        env_name{std::string_view{name_}}
     {
     }
 
@@ -64,16 +65,17 @@ public:
 struct env {
     static constexpr auto SEPARATOR = '=';
 private:
-    env_name var_name;
+    std::string var_name;
     std::optional<std::string> var_value;
 
 public:
-    explicit env(env_name name) noexcept :
-        var_name{name},
+    template <std::size_t SIZE>
+    explicit env(env_name<SIZE> name) noexcept :
+        var_name{name.to_string()},
         var_value{name.get_value()}
     {}
 
-    env(env_name name, std::string_view val) noexcept:
+    env(is_string auto name, std::string_view val) noexcept:
         var_name{name},
         var_value{val}
     {}
@@ -84,7 +86,7 @@ public:
     }
 
     void update() const {
-        auto name_str = var_name.to_string();
+        auto name_str = var_name;
         if (var_value.has_value()) {
             ::setenv(name_str.c_str(), var_value.value().c_str(), 1);
         } else {
@@ -108,15 +110,17 @@ public:
     constexpr auto to_string() const
         -> std::string
     {
-        return var_name.to_string() + SEPARATOR + var_value.value_or(std::string{});
+        return std::string{name()} + SEPARATOR + var_value.value_or(std::string{});
     }
 };
 
 namespace literals {
-    constexpr auto operator""_env(const char* name, std::size_t len)
-        -> env_name
+    template <char ... Cs>
+    constexpr auto operator""_env()
+        -> env_name<sizeof...(Cs)>
     {
-        return env_name(std::string(name, len));
+        static auto data = std::array{Cs..., '\0'};
+        return env_name<0>{std::string(data.data())};
     }
 }
 
