@@ -16,42 +16,46 @@ namespace vb {
 
 using namespace std::literals;
 
-template <std::size_t SIZE>
 struct env_name {
     static constexpr auto SEPARATOR = '=';
 private:
-    using string_type = std::conditional_t<SIZE == 0, std::string, static_string<SIZE>>;
-    string_type name;
+    std::optional<std::string> storage;
+    std::string_view name;
 
     constexpr auto data() const
     {
-        return std::visit([](const auto& val) { return val.data(); }, name);
+        return name.data();
     }
 
 public:
-    constexpr explicit env_name(std::string_view name_) noexcept:
-        name{std::string_view{name_.substr(0, name_.find(SEPARATOR))}}
+    consteval explicit env_name(const char *var_name, std::size_t size) noexcept
+    : name{var_name, size}
     {}
 
-    constexpr explicit env_name(const string_type name_) noexcept :
-        env_name{std::string_view{name_}}
-    {
-    }
+    explicit env_name(std::string var_name)
+    : storage{var_name}
+    , name{storage.value()}
+    {}
 
     constexpr std::size_t size() const noexcept
     {
-        return std::visit([](const auto& val) { return val.size(); }, name);
+        return name.size();
     }
 
-    std::string to_string() const {
-        return std::string{data(), size()};
+    std::string to_string() const 
+    {
+        if (storage.has_value()) {
+            return storage.value();
+        } else {
+           return std::string{name};
+        }
     }
 
     explicit constexpr operator std::string_view() const noexcept {
-        return std::string_view{data(), size()};
+        return name;
     }
 
-    std::optional<std::string> get_value() const noexcept
+    std::optional<std::string> value_str() const noexcept
     {
         auto var = to_string();
         if(auto value = ::getenv(var.c_str()); value != nullptr) {
@@ -59,6 +63,26 @@ public:
         } else {
             return {};
         }
+    }
+
+    template <vb::parse::parseable TYPE = std::string>
+    std::optional<TYPE> value() const
+    {
+        auto opt_value = value_str();
+        if (!opt_value.has_value()) {
+            return {};
+        }
+        if constexpr (std::same_as<TYPE, std::string>) {
+            return opt_value.value();
+        } else {
+            return { parse::from_string<TYPE>(opt_value.value()) };
+        }
+    }
+
+    template <parse::parseable TYPE>
+    auto value_or(TYPE default_val) const
+    {
+        return value<TYPE>().value_or(default_val);
     }
 };
 
@@ -69,10 +93,9 @@ private:
     std::optional<std::string> var_value;
 
 public:
-    template <std::size_t SIZE>
-    explicit env(env_name<SIZE> name) noexcept :
+    explicit env(env_name name) noexcept :
         var_name{name.to_string()},
-        var_value{name.get_value()}
+        var_value{name.value_str()}
     {}
 
     env(is_string auto name, std::string_view val) noexcept:
@@ -94,20 +117,7 @@ public:
         }
     }
 
-    template <vb::parse::parseable TYPE = std::string>
-    std::optional<TYPE> value() const
-    {
-        if (var_value.has_value()) {
-            return {};
-        }
-        if constexpr (std::same_as<TYPE, std::string>) {
-            return var_value.value();
-        } else {
-            return { from_string<TYPE>(var_value.value()) };
-        }
-    }
-
-    constexpr auto to_string() const
+    auto to_string() const
         -> std::string
     {
         return std::string{name()} + SEPARATOR + var_value.value_or(std::string{});
@@ -115,12 +125,9 @@ public:
 };
 
 namespace literals {
-    template <char ... Cs>
-    constexpr auto operator""_env()
-        -> env_name<sizeof...(Cs)>
+    consteval auto operator""_env(const char* name, std::size_t size)
     {
-        static auto data = std::array{Cs..., '\0'};
-        return env_name<0>{std::string(data.data())};
+        return env_name{name, size};
     }
 }
 
