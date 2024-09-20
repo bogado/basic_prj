@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <string_view>
+#include <string>
 
 namespace vb::parse {
 
@@ -26,7 +27,7 @@ constexpr auto from_string(std::string_view source) {
 }
 
 template <can_be_outstreamed VALUE_T>
-constexpr auto to_string(const VALUE_T& value)
+auto to_string(const VALUE_T& value)
 -> std::string
 {
     std::stringstream out{};
