@@ -131,6 +131,10 @@ namespace literals {
     }
 }
 
+namespace test {
+    static_assert("HOME"_env.name() == "HOME");
+}
+
 struct environment {
     std::vector<env> variables;
 };
