@@ -41,7 +41,7 @@ function(export_target_library_interface project target exported_name)
     )
 
 
-    install(EXPORT ${project} DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/basic 
+    install(EXPORT ${project} DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project} 
         NAMESPACE "${project}::"
 
         EXPORT_LINK_INTERFACE_LIBRARIES

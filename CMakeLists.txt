@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
-project (basic LANGUAGES CXX VERSION 1.0)
+project (basic_prj LANGUAGES CXX VERSION 1.0)
 
 enable_testing()
 
 include(cmake/InstallDirs.cmake)
-setup_install(basic)
+setup_install(basic_prj)
 
 set(basic_prj_headers 
     include/util/arrays.hpp
@@ -34,14 +34,14 @@ target_compile_features(basic_options INTERFACE cxx_std_23)
 
 
 install(TARGETS basic_options
-    EXPORT basic
+    EXPORT basic_prj
 )
 
-export_target_library_interface(basic basic_options options)
+export_target_library_interface(basic_prj basic_options options)
 
 add_library(basic_utils INTERFACE ${basic_prj_headers})
 
-target_link_libraries(basic_utils INTERFACE basic::options)
+target_link_libraries(basic_utils INTERFACE basic_options)
 
 target_include_directories(basic_utils
     INTERFACE
@@ -60,11 +60,11 @@ target_sources( basic_utils
 )
 
 install(TARGETS basic_utils
-    EXPORT basic
+    EXPORT basic_prj
     FILE_SET HEADERS
     DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-export_target_library_interface(basic basic_utils utils)
+export_target_library_interface(basic_prj basic_utils utils)
 
 include(cmake/StandardProjectSettings.cmake)
 
