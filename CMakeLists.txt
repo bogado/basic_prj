@@ -6,25 +6,21 @@ enable_testing()
 include(cmake/InstallDirs.cmake)
 setup_install(basic_prj)
 
-set(basic_prj_headers 
-    include/util/arrays.hpp
-    include/util/buffer.hpp
-    include/util/converters.hpp
-    include/util/debug.hpp
-    include/util/environment.hpp
-    include/util/execution.hpp
-    include/util/filesystem.hpp
-    include/util/generator.hpp
-    include/util/pipe.hpp
-    include/util/string.hpp
-    include/util/string_list.hpp
-    include/util/system.hpp
-    include/util/typeset.hpp
-    include/util/xml.hpp
-)
-
 # link this 'library' to set the c++ standard / compile-time options requested
 add_library(basic_options INTERFACE)
+
+install(FILES
+            cmake/Cache.cmake
+            cmake/CompilerWarnings.cmake
+            cmake/CPM.cmake
+            cmake/Debug.cmake
+            cmake/InstallDirs.cmake
+            cmake/Sanitizers.cmake
+            cmake/StandardProjectSettings.cmake
+            cmake/StaticAnalyzers.cmake
+            cmake/Utilities.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/basic_prj
+)
 
 set_target_properties(basic_options PROPERTIES
     CMAKE_CXX_STANDARD 23
@@ -32,14 +28,13 @@ set_target_properties(basic_options PROPERTIES
 
 target_compile_features(basic_options INTERFACE cxx_std_23)
 
-
 install(TARGETS basic_options
     EXPORT basic_prj
 )
 
 export_target_library_interface(basic_prj basic_options options)
 
-add_library(basic_utils INTERFACE ${basic_prj_headers})
+add_library(basic_utils INTERFACE)
 
 target_link_libraries(basic_utils INTERFACE basic_options)
 
@@ -56,7 +51,20 @@ target_sources( basic_utils
         BASE_DIRS
             include
         FILES
-            ${basic_prj_headers}
+        include/util/arrays.hpp
+        include/util/buffer.hpp
+        include/util/converters.hpp
+        include/util/debug.hpp
+        include/util/environment.hpp
+        include/util/execution.hpp
+        include/util/filesystem.hpp
+        include/util/generator.hpp
+        include/util/pipe.hpp
+        include/util/string.hpp
+        include/util/string_list.hpp
+        include/util/system.hpp
+        include/util/typeset.hpp
+        include/util/xml.hpp
 )
 
 install(TARGETS basic_utils
@@ -73,14 +81,12 @@ include(cmake/Catch2.cmake)
 
 # standard compiler warnings
 include(cmake/CompilerWarnings.cmake)
-set_project_warnings(basic_options)
 
 # enable cache system
 include(cmake/Cache.cmake)
 
 # sanitizer options if supported by compiler
 include(cmake/Sanitizers.cmake)
-enable_sanitizers(basic_options)
 
 # allow for static analysis options
 include(cmake/StaticAnalyzers.cmake)

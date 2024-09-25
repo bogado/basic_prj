@@ -1,5 +1,9 @@
 @PACKAGE_INIT@
-list(APPEND CMAKE_MODULE_PATH "@PACKAGE_cmakeModulesDir@")
+list(APPEND CMAKE_MODULE_PATH "@PACKAGE_cmakeModulesDir@" "@PACKAGE_cmakeModulesDir@/basic_prj")
+
+message(STATUS "Available path: ${CMAKE_MODULE_PATH}")
+
+include(CompilerWarnings)
+include(Sanitizers)
 
 include(${CMAKE_CURRENT_LIST_DIR}/basic_prj.cmake)
-
