@@ -50,7 +50,7 @@ struct opt_description {
         return data.view().substr(start_of_description);
     }
 
-    constexpr bool operator== (std::string k)
+    constexpr bool operator== (is_string auto k)
     {
         return key() == k;
     }
