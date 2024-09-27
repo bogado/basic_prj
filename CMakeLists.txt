@@ -40,11 +40,11 @@ target_link_libraries(basic_utils INTERFACE basic_options)
 
 target_include_directories(basic_utils
     INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_sources( basic_utils
+target_sources(basic_utils
     INTERFACE
         FILE_SET HEADERS
         TYPE HEADERS
@@ -95,4 +95,5 @@ set(UTILS_TEST_ENABLED FALSE CACHE BOOL "Enable building the tests for the utili
 
 if(UTILS_TEST_ENABLED) 
     add_subdirectory(test)
+    add_test(NAME BasicUtilsTests COMMAND basic_utils_test)
 endif()
