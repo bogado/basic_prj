@@ -97,6 +97,10 @@ struct static_string {
         return view() <=> other.view();
     }
 
+    constexpr operator string_view_type() const {
+        return view();
+    }
+
     constexpr auto array() const noexcept { return content; }
 
     template <size_type OTHER_SIZE>
@@ -146,6 +150,11 @@ concept is_string = requires {
     std::is_pointer_v<STRING>;
     typename std::char_traits<std::remove_pointer_t<STRING>>;
 };
+
+constexpr auto as_string_view(const is_string auto& str)
+{
+    return std::string_view(str);
+}
 
 template <std::size_t N>
 using static_string_list = std::array<std::string_view, N>;
