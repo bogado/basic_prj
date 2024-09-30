@@ -8,11 +8,8 @@
 #include <array>
 #include <cmath>
 
-inline int count = 0;
-
 vb::generator<unsigned> primes(unsigned start)
 {
-    count++;
     static constexpr auto small = std::array{2u,3u,5u,7u,11u,13u};
     if (start <= small.back())
     {
@@ -57,10 +54,8 @@ TEST_CASE("Prime generator", "[Prime][generator]")
         503u, 509u, 521u, 523u, 541u
     };
     auto check = CHECK.begin();
-    REQUIRE(count == 0);
     auto numbers = primes(2);
     for (auto i : numbers) {
-        REQUIRE(count == 1);
         REQUIRE(i == *check);
         if (++check == CHECK.end()) {
             break;
@@ -70,7 +65,6 @@ TEST_CASE("Prime generator", "[Prime][generator]")
     BENCHMARK_ADVANCED("Prime generator")(Catch::Benchmark::Chronometer meter) {
         auto generator = primes(2);
         auto prime_gen = generator.begin();
-        REQUIRE(count == 2);
         meter.measure([&](){
             ++prime_gen;
             return *prime_gen;

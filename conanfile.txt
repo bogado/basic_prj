@@ -1,6 +1,5 @@
 [requires]
 catch2/3.5.3
-fmt/10.2.1
 
 [generators]
 CMakeDeps

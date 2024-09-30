@@ -116,7 +116,9 @@ public:
     };
 
     iterator begin() {
-        return iterator{this};
+        auto result = iterator{this};
+        ++result;
+        return result;
     }
 
     auto end() {

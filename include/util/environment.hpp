@@ -1,124 +1,139 @@
 #ifndef ENVIRONMENT_HPP_INCLUDED
 #define ENVIRONMENT_HPP_INCLUDED
 
-#include <cmath>
+#include "util/converters.hpp"
+#include "util/string.hpp"
+
+#include <concepts>
+#include <vector>
 #include <string_view>
 #include <cstdlib>
 #include <optional>
-
-#include "util/converters.hpp"
-#include "util/string.hpp"
+#include <type_traits>
+#include <variant>
 
 namespace vb {
 
 using namespace std::literals;
 
-struct env {
+struct env_name {
+    static constexpr auto SEPARATOR = '=';
 private:
-    std::string_view variable_name;
-    std::string_view value;
-    std::string_view content;
-    bool fetched = false;
+    std::optional<std::string> storage;
+    std::string_view name;
 
-    static constexpr auto equal_pos(const is_string auto& content)
+    constexpr auto data() const
     {
-        return std::string_view(content).find_first_of('=');
-    }
-
-    static constexpr auto value_pos(const is_string auto& content)
-    {
-        auto pos = equal_pos(content);
-        if (pos == std::string_view::npos) {
-            return content.size();
-        }
-
-        return std::min(content.size(), pos +1);
+        return name.data();
     }
 
 public:
-    constexpr explicit env(std::string_view name_or_content) noexcept :
-        variable_name(name_or_content.substr(0, equal_pos(name_or_content))),
-        value(name_or_content.substr(value_pos(name_or_content))),
-        content(value.empty() ? value : name_or_content),
-        fetched(!value.empty())
-    {
-        if (!fetched && !std::is_constant_evaluated()) {
-            init();
-        }
-    }
-
-    template <std::size_t SIZE>
-    constexpr explicit env(static_string<SIZE> name_or_content) noexcept :
-        env{name_or_content}
+    consteval explicit env_name(const char *var_name, std::size_t size) noexcept
+    : name{var_name, size}
     {}
 
-    constexpr void init()
+    explicit env_name(std::string var_name)
+    : storage{var_name}
+    , name{storage.value()}
+    {}
+
+    constexpr std::size_t size() const noexcept
     {
-        if (fetched) return;
-        auto var_name = std::string{variable_name};
-        auto data = std::getenv(var_name.c_str());
-        if (data != nullptr) {
-            value = data;
+        return name.size();
+    }
+
+    std::string to_string() const 
+    {
+        if (storage.has_value()) {
+            return storage.value();
         } else {
-            value = std::string_view();
+           return std::string{name};
         }
-        fetched = true;
     }
 
-    template <vb::parse::parseable TYPE>
-    auto value_or(TYPE default_ = {})
+    explicit constexpr operator std::string_view() const noexcept {
+        return name;
+    }
+
+    std::optional<std::string> value_str() const noexcept
     {
-        if (!fetched) {
-            init();
+        auto var = to_string();
+        if(auto value = ::getenv(var.c_str()); value != nullptr) {
+            return std::string{value};
+        } else {
+            return {};
         }
-
-        if (value.empty()) {
-            return default_;
-        }
-
-        return vb::parse::from_string<TYPE>(value);
     }
 
-    template <vb::parse::parseable TYPE>
-    auto value_or(TYPE default_ = {}) const
-    -> TYPE
+    template <vb::parse::parseable TYPE = std::string>
+    std::optional<TYPE> value() const
     {
-        if (!fetched) {
-            auto copy = *this;
-            copy.init();
-            return copy.value_or(default_);
+        auto opt_value = value_str();
+        if (!opt_value.has_value()) {
+            return {};
         }
-        return vb::parse::from_string<TYPE>(value);
+        if constexpr (std::same_as<TYPE, std::string>) {
+            return opt_value.value();
+        } else {
+            return { parse::from_string<TYPE>(opt_value.value()) };
+        }
     }
 
-    constexpr auto name() const
+    template <parse::parseable TYPE>
+    auto value_or(TYPE default_val) const
     {
-        return variable_name;
+        return value<TYPE>().value_or(default_val);
+    }
+};
+
+struct env {
+    static constexpr auto SEPARATOR = '=';
+private:
+    std::string var_name;
+    std::optional<std::string> var_value;
+
+public:
+    explicit env(env_name name) noexcept :
+        var_name{name.to_string()},
+        var_value{name.value_str()}
+    {}
+
+    env(is_string auto name, std::string_view val) noexcept:
+        var_name{name},
+        var_value{val}
+    {}
+
+    constexpr std::string_view name() const
+    {
+        return static_cast<std::string_view>(var_name);
     }
 
-    constexpr auto to_string() const
+    void update() const {
+        auto name_str = var_name;
+        if (var_value.has_value()) {
+            ::setenv(name_str.c_str(), var_value.value().c_str(), 1);
+        } else {
+            ::unsetenv(name_str.c_str());
+        }
+    }
+
+    auto to_string() const
         -> std::string
     {
-        auto result = std::string{content};
-        if (result.empty()) 
-        {
-            result.append(variable_name);
-            result.append("=");
-            result.append(value_or<std::string>());
-        }
-        return result;
+        return std::string{name()} + SEPARATOR + var_value.value_or(std::string{});
     }
-
 };
 
 namespace literals {
-
-    constexpr auto operator""_env(const char* name, std::size_t len)
-        -> env
+    consteval auto operator""_env(const char* name, std::size_t size)
     {
-        return env(std::string_view(name, len));
+        return env_name{name, size};
     }
 }
+
+struct environment {
+    std::vector<env> variables;
+};
 
 }
 
