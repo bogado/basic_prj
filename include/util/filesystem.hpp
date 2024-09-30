@@ -3,9 +3,7 @@
 #define INCLUDED_FILEYSYSTEM_HPP
 
 #include <filesystem>
-
-#include <fmt/format.h>
-#include <fmt/std.h>
+#include <print>
 
 #include <sys/errno.h>
 
@@ -31,33 +29,33 @@ concept is_path_like = std::same_as<PATH_LIKE, fs::path> || is_string_type<PATH_
 
 struct filesystem_mock_ops : base_filesystem_ops {
     bool create_directories(fs::path path) const override {
-        fmt::print("Create directories {}\n", path);
+        std::println("Create directories {}", path.string());
         return true;
     }
 
     std::error_code create_link(fs::path source, fs::path target) const override
     {
-        fmt::print("Create link {} -> {}\n", source, target);
+        std::println("Create link {} -> {}", source.string(), target.string());
         return std::error_code{};
     }
 
     std::error_code create_symlink(fs::path source, fs::path target) const override {
-        fmt::print("Create symlink {} -> {}\n", source, target);
+        std::println("Create symlink {} -> {}", source.string(), target.string());
         return std::error_code{};
     }
 
     std::error_code copy(fs::path source, fs::path target) const override {
-        fmt::print("Copy {} -> {}\n", source, target);
+        std::println("Copy {} -> {}", source.string(), target.string());
         return std::error_code{};
     }
 
     std::error_code move(fs::path source, fs::path target) const override {
-        fmt::print("Move {} -> {}\n", source, target);
+        std::println("Move {} -> {}", source.string(), target.string());
         return std::error_code{};
     }
 
     std::error_code unlink(fs::path file) const override {
-        fmt::print("Remove {}\n", file);
+        std::println("Remove {}", file.string());
         return std::error_code{};
     }
 };

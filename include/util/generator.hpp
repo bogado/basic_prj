@@ -1,4 +1,3 @@
-// generator.hpp                                                                        -*-C++-*-
 #ifndef INCLUDED_GENERATOR_HPP
 #define INCLUDED_GENERATOR_HPP
 
@@ -35,12 +34,8 @@ struct generator {
             return generator{handle_type::from_promise(*this)};
         }
 
-        std::suspend_never  initial_suspend() noexcept { return {}; }
-        std::suspend_always   final_suspend() noexcept
-        {
-            done = true;
-            return {};
-        }
+        std::suspend_always  initial_suspend() noexcept { return {}; }
+        std::suspend_always    final_suspend() noexcept { done = true; return {}; }
 
         template <std::convertible_to<reference> YIELDED_TYPE>
         std::suspend_always yield_value(YIELDED_TYPE && yielded) noexcept
@@ -64,11 +59,12 @@ private:
 
     bool resume()
     {
-        if (done) {
+        if (handle.done()) {
             return false;
         }
 
         handle.resume();
+
         if (auto thrown = handle.promise().exception; thrown) {
             std::rethrow_exception(thrown);
         }
@@ -91,14 +87,11 @@ public:
 
     struct iterator {
         using value_type = generator::value_type;
-        using reference = generator::reference;
 
-        generator *self = nullptr;
-        value_type value{};
+        mutable generator *self = nullptr;
 
         iterator(generator* s) :
-            self{s},
-            value{self->next()}
+            self{s}
         {}
 
         reference operator*() const {
@@ -111,12 +104,14 @@ public:
         }
 
         bool operator==(const std::default_sentinel_t&) const {
-            return self == nullptr || *self;
+            return self == nullptr || !(*self);
         }
     };
 
     iterator begin() {
-        return iterator{this};
+        auto result = iterator{this};
+        ++result;
+        return result;
     }
 
     auto end() {
