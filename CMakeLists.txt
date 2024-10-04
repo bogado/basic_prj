@@ -70,7 +70,7 @@ target_sources(basic_utils
 install(TARGETS basic_utils
     EXPORT basic_prj
     FILE_SET HEADERS
-    DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 export_target_library_interface(basic_prj basic_utils utils)
 
