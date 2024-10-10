@@ -60,3 +60,8 @@ if(cmake_cxx_compiler_id MATCHES ".*clang")
     add_compile_definitions(project_options INTERFACE -ftime-trace)
   endif()
 endif()
+
+function(setup_target target)
+    set_project_warnings(target)
+    enable_sanitizers(target)
+endfunction()
