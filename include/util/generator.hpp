@@ -1,4 +1,3 @@
-// generator.hpp                                                                        -*-C++-*-
 #ifndef INCLUDED_GENERATOR_HPP
 #define INCLUDED_GENERATOR_HPP
 

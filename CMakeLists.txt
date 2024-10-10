@@ -4,11 +4,22 @@ project (basic_prj LANGUAGES CXX VERSION 1.0)
 enable_testing()
 
 include(cmake/InstallDirs.cmake)
-setup_install(basic_prj)
-
+# inlcude catch2 v3 setup
+include(cmake/Catch2.cmake)
+# standard compiler warnings
+include(cmake/CompilerWarnings.cmake)
+# enable cache system
+include(cmake/Cache.cmake)
+# sanitizer options if supported by compiler
+include(cmake/Sanitizers.cmake)
+# allow for static analysis options
+include(cmake/StaticAnalyzers.cmake)
 # link this 'library' to set the c++ standard / compile-time options requested
-add_library(basic_options INTERFACE)
+include(cmake/StandardProjectSettings.cmake)
 
+setup_project_install(basic_prj)
+
+add_library(basic_options INTERFACE)
 install(FILES
             cmake/Cache.cmake
             cmake/CompilerWarnings.cmake
@@ -70,26 +81,10 @@ target_sources(basic_utils
 install(TARGETS basic_utils
     EXPORT basic_prj
     FILE_SET HEADERS
-    DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 export_target_library_interface(basic_prj basic_utils utils)
 
-include(cmake/StandardProjectSettings.cmake)
-
-# inlcude catch2 v3 setup
-include(cmake/Catch2.cmake)
-
-# standard compiler warnings
-include(cmake/CompilerWarnings.cmake)
-
-# enable cache system
-include(cmake/Cache.cmake)
-
-# sanitizer options if supported by compiler
-include(cmake/Sanitizers.cmake)
-
-# allow for static analysis options
-include(cmake/StaticAnalyzers.cmake)
 
 set(UTILS_TEST_ENABLED FALSE CACHE BOOL "Enable building the tests for the utilities")
 

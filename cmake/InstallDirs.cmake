@@ -24,23 +24,23 @@ if(USER_DIR_INSTALL)
 endif()
 include(GNUInstallDirs)
 
-function(setup_install name)
+function(setup_project_install project)
     configure_package_config_file(
-        ${name}Config.cmake.in ${name}Config.cmake
+        ${project}Config.cmake.in ${project}Config.cmake
         INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake
         PATH_VARS cmakeModulesDir
         NO_SET_AND_CHECK_MACRO
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
     )
 
-    write_basic_package_version_file(${name}ConfigVersion.cmake
+    write_basic_package_version_file(${project}ConfigVersion.cmake
         COMPATIBILITY SameMajorVersion)
 
     install(
         FILES
-            ${CMAKE_CURRENT_BINARY_DIR}/${name}ConfigVersion.cmake
-            ${CMAKE_CURRENT_BINARY_DIR}/${name}Config.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${name}
+            ${CMAKE_CURRENT_BINARY_DIR}/${project}ConfigVersion.cmake
+            ${CMAKE_CURRENT_BINARY_DIR}/${project}Config.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project}
     )
 endfunction()
 
