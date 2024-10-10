@@ -3,19 +3,19 @@ list(APPEND CMAKE_MODULE_PATH "@PACKAGE_cmakeModulesDir@" "@PACKAGE_cmakeModules
 
 message(STATUS "Available path: ${CMAKE_MODULE_PATH}")
 
-include(cmake/InstallDirs.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/InstallDirs.cmake)
 # inlcude catch2 v3 setup
-include(cmake/Catch2.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/Catch2.cmake)
 # standard compiler warnings
-include(cmake/CompilerWarnings.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/CompilerWarnings.cmake)
 # enable cache system
-include(cmake/Cache.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/Cache.cmake)
 # sanitizer options if supported by compiler
-include(cmake/Sanitizers.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/Sanitizers.cmake)
 # allow for static analysis options
-include(cmake/StaticAnalyzers.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/StaticAnalyzers.cmake)
 # link this 'library' to set the c++ standard / compile-time options requested
-include(cmake/StandardProjectSettings.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/StandardProjectSettings.cmake)
 
 add_library(basic::options INTERFACE)
 set_project_warnings(basic::options)
