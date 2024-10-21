@@ -85,7 +85,6 @@ install(TARGETS basic_utils
 
 export_target_library_interface(basic_prj basic_utils utils)
 
-
 set(UTILS_TEST_ENABLED FALSE CACHE BOOL "Enable building the tests for the utilities")
 
 if(UTILS_TEST_ENABLED) 

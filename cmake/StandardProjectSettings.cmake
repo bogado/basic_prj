@@ -64,6 +64,6 @@ if(cmake_cxx_compiler_id MATCHES ".*clang")
 endif()
 
 function(setup_target target)
-    set_project_warnings(target)
-    enable_sanitizers(target)
+    set_project_warnings(${target})
+    enable_sanitizers(${target})
 endfunction()
