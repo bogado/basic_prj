@@ -1,12 +1,9 @@
 = Basic project template.
 Victor Bogado da Silva Lins <victor@bogado.net>
 
-
 == Starting point for C++ project
 
-
 == Utility library
-
 
 Use the 'basic_prj::utils` cmake target.
 
@@ -16,4 +13,3 @@ Header only library that Includes :
 * Reimplementation of co-routine generators.
 * Static const-expr string.
 * `is_string` concepts.
-
