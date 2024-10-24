@@ -4,7 +4,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/Utilities.cmake)
 #
 # https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
 
-function(set_project_warnings target)
+function(set_project_warnings target type)
   option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" TRUE)
 
   set(MSVC_WARNINGS
@@ -93,5 +93,5 @@ function(set_project_warnings target)
     message(AUTHOR_WARNING "No compiler warnings set for '${CMAKE_CXX_COMPILER_ID}' compiler.")
   endif()
 
-  target_compile_options(${target} PRIVATE ${PROJECT_WARNINGS})
+  target_compile_options(${target} ${type} ${PROJECT_WARNINGS})
 endfunction()

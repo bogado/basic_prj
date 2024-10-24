@@ -63,7 +63,11 @@ if(cmake_cxx_compiler_id MATCHES ".*clang")
   endif()
 endif()
 
-function(setup_target target)
-    set_project_warnings(${target})
+function(setup_target target type)
+    set_project_warnings(${target} ${type})
     enable_sanitizers(${target})
+    set_target_properties(${target} PROPERTIES
+        CMAKE_CXX_STANDARD 23
+        CMAKE_CXX_EXTENSIONS False)
+    target_compile_features(${target} ${type} cxx_std_23)
 endfunction()

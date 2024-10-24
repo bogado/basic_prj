@@ -33,21 +33,8 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/basic_prj
 )
 
-set_target_properties(basic_options PROPERTIES
-    CMAKE_CXX_STANDARD 23
-    CMAKE_CXX_EXTENSIONS False)
-
-target_compile_features(basic_options INTERFACE cxx_std_23)
-
-install(TARGETS basic_options
-    EXPORT basic_prj
-)
-
-export_target_library_interface(basic_prj basic_options options)
-
 add_library(basic_utils INTERFACE)
-
-target_link_libraries(basic_utils INTERFACE basic_options)
+setup_target(basic_utils INTERFACE)
 
 target_include_directories(basic_utils
     INTERFACE
