@@ -1,4 +1,4 @@
-set(CPM_DOWNLOAD_VERSION 0.38.1)
+set(CPM_DOWNLOAD_VERSION 0.40.2)
 
 if(CPM_SOURCE_CACHE)
   set(CPM_DOWNLOAD_LOCATION "${CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
@@ -13,10 +13,15 @@ get_filename_component(CPM_DOWNLOAD_LOCATION ${CPM_DOWNLOAD_LOCATION} ABSOLUTE)
 
 function(download_cpm)
   message(STATUS "Downloading CPM.cmake to ${CPM_DOWNLOAD_LOCATION}")
-  file(DOWNLOAD
+  file(DOWNLOAD 
        https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake
        ${CPM_DOWNLOAD_LOCATION}
+       STATUS CPM_DOWNLOAD_STATUS
   )
+  list(POP_BACK CPM_DOWNLOAD_STATUS CPM_ERROR)
+  if (NOT ${CPM_DOWNLOAD_STATUS} EQUAL 0)
+      message(FATAL_ERROR "CPM could not be downloaded ${CPM_ERROR} : ${CPM_DOWNLOAD_STATUS}")
+  endif()
 endfunction()
 
 if(NOT (EXISTS ${CPM_DOWNLOAD_LOCATION}))
