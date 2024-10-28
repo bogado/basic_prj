@@ -132,6 +132,7 @@ namespace literals {
 }
 
 namespace test {
+    using namespace literals;
     static_assert("HOME"_env.name() == "HOME");
 }
 
