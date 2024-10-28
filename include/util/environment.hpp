@@ -18,16 +18,15 @@ using namespace std::literals;
 
 struct env_name {
     static constexpr auto SEPARATOR = '=';
-private:
     std::optional<std::string> storage;
-    std::string_view name;
 
     constexpr auto data() const
     {
         return name.data();
     }
-
 public:
+    std::string_view name;
+
     consteval explicit env_name(const char *var_name, std::size_t size) noexcept
     : name{var_name, size}
     {}
