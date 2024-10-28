@@ -16,7 +16,7 @@
 
 namespace vb {
 
-#if defined(NDEBUG)
+#if defined(NDEBUG_TRACE)
 inline constexpr auto debug_enabled = false;
 #else
 inline constexpr auto debug_enabled = true;
