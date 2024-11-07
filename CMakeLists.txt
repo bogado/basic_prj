@@ -23,7 +23,6 @@ add_library(basic_options INTERFACE)
 install(FILES
             cmake/Cache.cmake
             cmake/CompilerWarnings.cmake
-            cmake/CPM.cmake
             cmake/Debug.cmake
             cmake/InstallDirs.cmake
             cmake/Sanitizers.cmake
