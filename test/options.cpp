@@ -3,6 +3,15 @@
 #include "util/options.hpp"
 
 #include <catch2/catch_all.hpp>
+namespace vb::opt {
+    
+TEST_CASE("Test options parsing", "[options]")
+{
+    auto option = "-t, --test Testing the optrions"_opt;
+    
+}
+
+}
 // --------------------------------------------------------------
 // NOTICE:
 // Copyright 2024 Bloomberg Finance L.P. All rights reserved.
