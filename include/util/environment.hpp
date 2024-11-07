@@ -93,9 +93,9 @@ private:
     std::optional<std::string> var_value;
 
 public:
-    explicit env(env_name name) noexcept :
-        var_name{name.to_string()},
-        var_value{name.value_str()}
+    explicit env(env_name e_name) noexcept :
+        var_name{e_name.to_string()},
+        var_value{e_name.value_str()}
     {}
 
     env(is_string auto name, std::string_view val) noexcept:
@@ -132,7 +132,8 @@ namespace literals {
 }
 
 namespace test {
-    static_assert("HOME"_env.name() == "HOME");
+    using namespace literals;
+    static_assert("HOME"_env.name == "HOME");
 }
 
 struct environment {
