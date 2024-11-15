@@ -6,7 +6,7 @@
 #include <string_view>
 #include <string>
 
-namespace vb::parse {
+namespace vb {
 
 template <typename VALUE_T>
 concept can_be_istreamed = requires(std::istream& in, VALUE_T val) {
@@ -37,7 +37,7 @@ auto to_string(const VALUE_T& value)
 
 template <typename PARSEABLE>
 concept parseable = requires (const std::string_view str) {
-    { parse::from_string<PARSEABLE>(str) } -> std::same_as<PARSEABLE>;
+    { from_string<PARSEABLE>(str) } -> std::same_as<PARSEABLE>;
 };
 
 template <typename STRINGABLE>

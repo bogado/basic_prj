@@ -64,7 +64,7 @@ public:
         }
     }
 
-    template <vb::parse::parseable TYPE = std::string>
+    template <vb::parseable TYPE = std::string>
     std::optional<TYPE> value() const
     {
         auto opt_value = value_str();
@@ -74,11 +74,11 @@ public:
         if constexpr (std::same_as<TYPE, std::string>) {
             return opt_value.value();
         } else {
-            return { parse::from_string<TYPE>(opt_value.value()) };
+            return { from_string<TYPE>(opt_value.value()) };
         }
     }
 
-    template <parse::parseable TYPE>
+    template <parseable TYPE>
     auto value_or(TYPE default_val) const
     {
         return value<TYPE>().value_or(default_val);

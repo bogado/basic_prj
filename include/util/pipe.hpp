@@ -302,10 +302,10 @@ public:
         return buffer.has_data() || can_be_read();
     }
 
-    template <parse::can_be_outstreamed... DATA_Ts>
+    template <can_be_outstreamed... DATA_Ts>
     auto operator()(DATA_Ts... data)
     {
-        for (auto str : std::array{ parse::to_string(data)... })
+        for (auto str : std::array{ to_string(data)... })
         {
             sys::write(file_descriptors[index(WRITE)], str.data(), str.size());
             if (str.back() != '\n') {
