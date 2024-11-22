@@ -30,6 +30,8 @@ install(FILES
             cmake/StandardProjectSettings.cmake
             cmake/StaticAnalyzers.cmake
             cmake/Utilities.cmake
+            cmake/clang.cmake
+            cmake/gcc.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/basic_prj
 )
 
