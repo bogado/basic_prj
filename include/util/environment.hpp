@@ -26,7 +26,6 @@ struct environment;
 
 struct variable_name {
     static constexpr auto SEPARATOR = '=';
-private:
     std::optional<std::string> storage;
     std::string_view my_name;
 
