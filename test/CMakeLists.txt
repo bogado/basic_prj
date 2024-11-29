@@ -2,10 +2,13 @@ find_package(Catch2 3 REQUIRED)
 
 add_executable(basic_utils_test
     buffer.cpp
-    pipe.cpp
-    primes.cpp
-    options.cpp
+    environment.cpp
     execution.cpp
+    options.cpp
+    pipe.cpp
+    preferences.cpp
+    primes.cpp
+    string_list.cpp
 )
 
 target_compile_definitions(basic_utils_test PRIVATE NDEBUG)

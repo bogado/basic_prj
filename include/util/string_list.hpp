@@ -4,6 +4,7 @@
 #include "./string.hpp"
 
 #include <algorithm>
+#include <iterator>
 #include <ranges>
 
 namespace vb {
@@ -12,9 +13,11 @@ namespace vb {
 template <std::size_t N>
 using static_string_list = std::array<std::string_view, N>;
 
-template <is_string_type auto STR, auto SEPARATOR = ','>
+template <static_string STR, auto SEPARATOR = ','>
 constexpr auto splited = []() {
     constexpr auto view =  std::string_view {STR};
+    constexpr auto separators = view | std::views::filter([](auto c) { return c == SEPARATOR; 
+    constexpr auto count = std::ranges::distance(separators.begin(), separators.end());
 
     static auto result = std::array<std::string_view, std::size(STR)>{};
 

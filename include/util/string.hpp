@@ -148,7 +148,8 @@ concept is_string = requires {
     typename std::char_traits<std::remove_all_extents_t<STRING>>;
 } || requires {
     std::is_pointer_v<STRING>;
-    typename std::char_traits<std::remove_pointer_t<STRING>>;
+    std::is_const_v<std::remove_pointer_t<STRING>>;
+    std::is_same_v<typename std::char_traits<std::remove_pointer_t<STRING>>::value_type, std::remove_pointer_t<STRING>>;
 };
 
 constexpr auto as_string_view(const is_string auto& str)

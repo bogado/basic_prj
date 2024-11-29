@@ -4,8 +4,6 @@ project (basic_prj LANGUAGES CXX VERSION 1.0)
 enable_testing()
 
 include(cmake/InstallDirs.cmake)
-# inlcude catch2 v3 setup
-include(cmake/Catch2.cmake)
 # standard compiler warnings
 include(cmake/CompilerWarnings.cmake)
 # enable cache system
@@ -49,20 +47,24 @@ target_sources(basic_utils
         BASE_DIRS
             include
         FILES
-        include/util/arrays.hpp
-        include/util/buffer.hpp
-        include/util/converters.hpp
-        include/util/debug.hpp
-        include/util/environment.hpp
-        include/util/execution.hpp
-        include/util/filesystem.hpp
-        include/util/generator.hpp
-        include/util/pipe.hpp
-        include/util/string.hpp
-        include/util/string_list.hpp
-        include/util/system.hpp
-        include/util/typeset.hpp
-        include/util/xml.hpp
+            include/util/arrays.hpp
+            include/util/bounded_array.hpp
+            include/util/buffer.hpp
+            include/util/converters.hpp
+            include/util/debug.hpp
+            include/util/environment.hpp
+            include/util/execution.hpp
+            include/util/expected.hpp
+            include/util/filesystem.hpp
+            include/util/generator.hpp
+            include/util/options.hpp
+            include/util/pipe.hpp
+            include/util/preferences.hpp
+            include/util/string.hpp
+            include/util/string_list.hpp
+            include/util/system.hpp
+            include/util/typeset.hpp
+            include/util/xml.hpp
 )
 
 install(TARGETS basic_utils
