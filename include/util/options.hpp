@@ -181,7 +181,7 @@ struct basic_option : OPTION_DESCRIPTION_T {
 
     constexpr auto parse(std::string_view str)
     {
-        if constexpr (parse::parseable<value_type>) {
+        if constexpr (parseable<value_type>) {
             return from_string<value_type>(str);
         }
     }
