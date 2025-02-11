@@ -55,7 +55,7 @@ struct opt_description {
         template <is_prefix_type PREFIX_T>
         constexpr static auto length(PREFIX_T prefix) {
             if constexpr (std::same_as<PREFIX_T, char>) {
-                return 1;
+                return 1uz;
             } else if constexpr (is_string<PREFIX_T>) {
                 return std::size(prefix);
             } else {

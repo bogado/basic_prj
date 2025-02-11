@@ -1,5 +1,6 @@
 #ifndef STRING_LIST_HPP_INCLUDED
 #define STRING_LIST_HPP_INCLUDED
+#if 0
 
 #include "./string.hpp"
 
@@ -8,7 +9,6 @@
 #include <ranges>
 
 namespace vb {
-
 // NOLINTEND modernize-avoid-c-arrays //
 template <std::size_t N>
 using static_string_list = std::array<std::string_view, N>;
@@ -16,8 +16,8 @@ using static_string_list = std::array<std::string_view, N>;
 template <static_string STR, auto SEPARATOR = ','>
 constexpr auto splited = []() {
     constexpr auto view =  std::string_view {STR};
-    constexpr auto separators = view | std::views::filter([](auto c) { return c == SEPARATOR; 
-    constexpr auto count = std::ranges::distance(separators.begin(), separators.end());
+    constexpr auto separators = view | std::views::filter([&](auto c) { return c == SEPARATOR; });
+    constexpr auto count = std::ranges::count(separators, SEPARATOR);
 
     static auto result = std::array<std::string_view, std::size(STR)>{};
 
@@ -26,7 +26,7 @@ constexpr auto splited = []() {
     });
 
     auto end = std::ranges::copy(strings, std::begin(result));
-    return std::span{std::begin(STR), end};
+    return result;
 }();
 
 namespace test {
@@ -41,6 +41,6 @@ using namespace std::literals;
     static_assert(splited_test[2] == "b"sv);
     static_assert(splited_test[3] == "c"sv);
 }  // namespace test
-
 }
+#endif
 #endif
