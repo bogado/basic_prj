@@ -93,5 +93,6 @@ function(set_project_warnings target type)
     message(AUTHOR_WARNING "No compiler warnings set for '${CMAKE_CXX_COMPILER_ID}' compiler.")
   endif()
 
+  message(STATUS "Compiler warnings set for '${CMAKE_CXX_COMPILER_ID}' compiler: ${PROJECT_WARNINGS}")
   target_compile_options(${target} ${type} ${PROJECT_WARNINGS})
 endfunction()
