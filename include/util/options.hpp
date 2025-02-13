@@ -63,21 +63,23 @@ struct opt_description {
             }
         }
 
-        constexpr static auto find_pos(std::string_view from, auto prefix) {
-            auto view = as_string_view(from);
-            auto pos = std::size_t{0};
-            while(pos < view.size() - 2 && is_word_char(view[pos+1]))
-            {
-                pos = view.find(prefix);
-                view = view.substr(pos);
-            }
-            return pos; 
+        constexpr static auto find_pos(std::string_view from, char prefix [[maybe_unused]]) {
+            return from.substr(from.find(prefix),1);
+        }
+
+        constexpr static auto find_pos(std::string_view from, std::string_view prefix [[maybe_unused]]) {
+            auto found = std::ranges::search(from, prefix);
+            return std::string_view(std::begin(found), std::end(found));
         }
 
         constexpr static auto find_after(std::string_view from, auto prefix) {
-            auto view = as_string_view(from);
-            view = view.substr(find_pos(from, prefix) + length(prefix));
-            return view.substr(0, std::distance(std::begin(view), std::ranges::find_if_not(view, is_word_char)));
+            auto found = find_pos(from, prefix);
+            if (found.empty() || std::end(found) == std::end(from)) {
+                return std::string_view{};
+            }
+            return std::string_view(
+              std::end(found),
+              std::ranges::find_if_not(std::next(std::end(found)), std::end(from), is_word_char));
         }
     };
 
