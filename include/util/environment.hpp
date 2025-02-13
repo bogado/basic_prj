@@ -143,7 +143,14 @@ public:
 
     variable_name name() const
     {
-        return variable_name{*this};
+        return variable_name{definition};
+    }
+
+    void set(std::string value)
+    {
+        auto sep = std::ranges::find(definition, SEPARATOR);
+        definition.replace(sep, std::end(definition), SEPARATOR + value); 
+        var_value = std::string_view(sep, std::end(definition));
     }
 
     template <typename VALUE_T = std::string_view>
@@ -249,7 +256,9 @@ private:
     }
 
     auto add(variable var) {
-        definitions.erase(std::ranges::find(definitions, var.name(), &variable::name));
+        if (auto old = std::ranges::find(definitions, var.name(), &variable::name); old != std::end(definitions)) {
+            definitions.erase(old);
+        }
         definitions.push_back(var);
     }
 
@@ -264,7 +273,8 @@ private:
 
         void operator=(stringable auto value) // NOLINT: cppcoreguidelines-c-copy-assignment-signature
         {
-            self.add(vb::to_string(value));
+            update.set(vb::to_string(value));
+            self.add(update);
         }
     };
 
