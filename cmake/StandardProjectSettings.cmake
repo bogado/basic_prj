@@ -1,4 +1,6 @@
 # Set a default build type if none was specified
+message(STATUS "Setting up standard project setting")
+
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(
     STATUS "Setting build type to 'RelWithDebInfo' as none was specified.")
@@ -11,7 +13,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 function(enable_clang_features target)
-    if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         option(USE_LIBCXX_STDLIB "Use libc++ instead of libstdc++" on)
         if (USE_LIBCXX_STDLIB)
             add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
@@ -42,24 +44,6 @@ if(ENABLE_IPO)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
   else()
     message(SEND_ERROR "IPO is not supported: ${output}")
-  endif()
-endif()
-
-option(VERBOSE_ERROR
-    "Enable the compiler to backtrace templates and concept errors much more deeply"
-    OFF)
-
-if(VERBOSE_ERROR)
-    list(APPEND CMAKE_CXX_FLAGS -ftemplate-backtrace-limit=0)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        list(APPEND CMAKE_CXX_FLAGS -fconcepts-diagnostics-depth=10)
-    endif()
-endif()
-
-if(cmake_cxx_compiler_id MATCHES ".*clang")
-  option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" off)
-  if (ENABLE_BUILD_WITH_TIME_TRACE)
-    add_compile_definitions(project_options INTERFACE -ftime-trace)
   endif()
 endif()
 

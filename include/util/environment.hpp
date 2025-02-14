@@ -6,7 +6,7 @@
 
 #include <concepts>
 #include <iterator>
-#include <ranges>
+#include <algorithm>
 #include <set>
 #include <utility>
 #include <vector>
@@ -14,13 +14,13 @@
 #include <cstdlib>
 #include <optional>
 #include <type_traits>
-#include <variant>
 
 namespace vb {
 
 using namespace std::literals;
 
 namespace env {
+
 struct variable;
 struct environment;
 
@@ -37,6 +37,7 @@ struct variable_name {
     friend struct variable;
 
     explicit variable_name(const variable& other);
+
 public:
     consteval explicit variable_name(const char *var_name, std::size_t size) noexcept
     : my_name{var_name, size}
@@ -99,6 +100,16 @@ public:
     {
         return value<TYPE>().value_or(default_val);
     }
+    
+    constexpr auto operator <=>(const variable_name& other) const {
+        return other.my_name <=> my_name;
+    }
+
+    constexpr bool operator==(const variable_name& other) const {
+        return other.my_name == my_name;
+    }
+
+    constexpr bool operator!=(const variable_name& other) const = default;
 };
 
 struct variable {
@@ -120,6 +131,11 @@ public:
         var_value{}
     {}
 
+    variable(is_string auto name) noexcept:
+        definition(std::string(name) + SEPARATOR),
+        var_value{}
+    {}
+
     variable(is_string auto name, std::string_view val) noexcept:
         definition{to_string(name) + SEPARATOR + std::string(val)},
         var_value{val}
@@ -127,7 +143,14 @@ public:
 
     variable_name name() const
     {
-        return variable_name{*this};
+        return variable_name{definition};
+    }
+
+    void set(std::string value)
+    {
+        auto sep = std::ranges::find(definition, SEPARATOR);
+        definition.replace(sep, std::end(definition), SEPARATOR + value); 
+        var_value = std::string_view(sep, std::end(definition));
     }
 
     template <typename VALUE_T = std::string_view>
@@ -179,6 +202,14 @@ public:
     {
         return definition;
     }
+
+    friend bool operator==(const variable& me, const variable_name& name) {
+        return me.name() == name;
+    }
+
+    friend bool operator==(const variable_name& name, const variable& me) {
+        return me == name;
+    }
 };
 
 variable_name::variable_name(const variable& var) :
@@ -207,7 +238,7 @@ private:
         return a.name().to_string() < b.name().to_string();
     }
 
-    std::set<variable, decltype(&compare_names)> definitions{compare_names};
+    std::vector<variable> definitions;
     std::vector<char *> environ;
 
     static auto grab_data(variable& var)
@@ -217,15 +248,23 @@ private:
 
     void update()
     {
+        std::ranges::sort(definitions, compare_names);
         environ.clear();
         for (auto& var: definitions) {
             environ.push_back(var.definition.data());
         }
     }
 
+    auto add(variable var) {
+        if (auto old = std::ranges::find(definitions, var.name(), &variable::name); old != std::end(definitions)) {
+            definitions.erase(old);
+        }
+        definitions.push_back(var);
+    }
+
     struct mod {
         environment& self; // NOLINT: cppcoreguidelines-avoid-const-or-ref-data-members
-        std::string update;
+        variable update;
 
         mod(environment& me, std::string_view n)
           : self{ me }
@@ -234,25 +273,14 @@ private:
 
         void operator=(stringable auto value) // NOLINT: cppcoreguidelines-c-copy-assignment-signature
         {
-            self.definitions += update + VALUE_SEPARATOR + to_string(value);
-            self.definitions.push_back(SEPARATOR);
+            update.set(vb::to_string(value));
+            self.add(update);
         }
     };
 
     auto lookup_name(std::string lookup) const
     {
-        lookup += VALUE_SEPARATOR;
-        if (definitions.starts_with(lookup))
-        {
-            return std::next(std::begin(definitions), static_cast<int>(lookup.size() - 1));
-        }
-
-        lookup.insert(0, std::string{SEPARATOR});
-        auto found = std::ranges::search(definitions, lookup);
-        if (found.begin() == definitions.end()) {
-            return std::end(definitions);
-        }
-        return std::prev(found.end());
+        return std::ranges::find(definitions, variable_name{lookup}, &variable::name);
     }
 
 public:
@@ -261,15 +289,19 @@ public:
        : definitions{}
     {
         while(environment_ != nullptr) {
-            definitions.insert(variable{std::string{*environment_}});
+            definitions.emplace_back(std::string{*environment_});
+            environment_++;
         }
     }
 
     template <parseable RESULT_T>
     RESULT_T get(std::string name) const
     {
-        auto pos = lookup_name(name);
-        return from_string<RESULT_T>(std::string_view(pos, std::find(pos, definitions.end(), SEPARATOR)));
+        auto it = lookup_name(name);
+        if (it == std::end(definitions)) {
+            return {};
+        }
+        return from_string<RESULT_T>(it->value());
     }
 
     bool contains(std::string name) 
@@ -284,10 +316,15 @@ public:
 
     auto size() const
     {
-        return std::ranges::count_if(definitions, [](auto c) { return c == SEPARATOR; });
+        return definitions.size();
     }
 };
 
+}
+
+namespace literals {
+    using namespace env::literals;
+}
 }
 
 #endif

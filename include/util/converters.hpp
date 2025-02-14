@@ -49,7 +49,7 @@ constexpr auto from_string(std::string_view source) {
 
 template <can_be_istreamed PARSEABLE>
 constexpr auto from_string(is_string auto source) {
-    return from_string(as_string_view(source));
+    return from_string<PARSEABLE>(as_string_view(source));
 }
 
 template <typename PARSEABLE>

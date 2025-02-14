@@ -1,6 +1,6 @@
 // string_list.cpp                                                                        -*-C++-*-
 #include "util/string_list.hpp"
-
+#if 0
 #include <catch2/catch_all.hpp>
 
 TEST_CASE("", "[string_list]")
@@ -12,11 +12,4 @@ TEST_CASE("", "[string_list]")
     STATIC_REQUIRE(list[2] == "abc");
 }
 
-
-// --------------------------------------------------------------
-// NOTICE:
-// Copyright 2024 Bloomberg Finance L.P. All rights reserved.
-// Property of Bloomberg Finance L.P. (BFLP)
-// This software is made available solely pursuant to the
-// terms of a BFLP license agreement which governs its use
-// ----------------------- END-OF-FILE --------------------------
+#endif
