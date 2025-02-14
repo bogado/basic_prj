@@ -21,9 +21,7 @@ concept can_be_outstreamed = requires(std::ostream& out, VALUE_T val) {
     { out << val } -> std::same_as<std::ostream&>;
 };
 
-}
-
-template <parse::can_be_outstreamed VALUE_T>
+template <can_be_outstreamed VALUE_T>
 auto to_string(const VALUE_T& value)
 -> std::string
 {
@@ -38,7 +36,7 @@ auto to_string(const VALUE_T& value)
     return out.str();
 }
 
-template <parse::can_be_istreamed PARSEABLE>
+template <can_be_istreamed PARSEABLE>
 constexpr auto from_string(std::string_view source) {
     if constexpr (std::same_as<std::string_view, PARSEABLE>) {
         return source;
@@ -49,7 +47,7 @@ constexpr auto from_string(std::string_view source) {
     return result;
 }
 
-template <parse::can_be_istreamed PARSEABLE>
+template <can_be_istreamed PARSEABLE>
 constexpr auto from_string(is_string auto source) {
     return from_string(as_string_view(source));
 }
@@ -78,7 +76,6 @@ namespace static_test {
     static_assert(!parseable<std::string_view>);
     static_assert(stringable<std::string_view>);
 }
-
 
 }
 

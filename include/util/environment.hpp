@@ -235,7 +235,7 @@ private:
         void operator=(stringable auto value) // NOLINT: cppcoreguidelines-c-copy-assignment-signature
         {
             self.definitions += update + VALUE_SEPARATOR + to_string(value);
-            self.definitions.insert(SEPARATOR);
+            self.definitions.push_back(SEPARATOR);
         }
     };
 
