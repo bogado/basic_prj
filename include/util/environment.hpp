@@ -89,9 +89,13 @@ public:
             return {};
         }
         if constexpr (std::same_as<TYPE, std::string>) {
-            return opt_value.value();
+            return opt_value;
         } else {
-            return { from_string<TYPE>(opt_value.value()) };
+            if (opt_value.has_value()) {
+                return { from_string<TYPE>(opt_value.value()) };
+            } else {
+                return {};
+            }
         }
     }
 
