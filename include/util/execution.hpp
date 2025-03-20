@@ -7,7 +7,6 @@
 
 #include "./filesystem.hpp"
 
-#include <cinttypes>
 #include <array>
 #include <concepts>
 #include <cstdint>

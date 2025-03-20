@@ -37,9 +37,11 @@ auto to_string(const VALUE_T& value)
 }
 
 template <can_be_istreamed PARSEABLE>
-constexpr auto from_string(std::string_view source) {
-    if constexpr (std::same_as<std::string_view, PARSEABLE>) {
-        return source;
+constexpr auto from_string(std::string_view source) 
+-> PARSEABLE 
+{
+    if constexpr (std::same_as<std::string_view, PARSEABLE> || std::same_as<std::string, PARSEABLE>) {
+        return PARSEABLE{source};
     }
     auto result = PARSEABLE{};
     std::stringstream in{to_string(source)};

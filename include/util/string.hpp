@@ -137,20 +137,30 @@ static_assert(test2.view() == test3.substr(0, 3));
 
 }  // namespace literals
 
+template <typename CHAR>
+concept is_char = std::same_as<char, CHAR>
+    || std::same_as<char8_t, CHAR>
+    || std::same_as<char16_t, CHAR>
+    || std::same_as<char32_t, CHAR>;
+
 template <typename STRING>
-concept is_string = requires {
-    typename STRING::traits_type;
-    typename STRING::value_type;
-    typename STRING::traits_type::char_type;
-    { std::same_as<typename STRING::traits_type::char_type, typename STRING::value_type> };
-} || requires {
-    std::is_array_v<STRING>;
-    typename std::char_traits<std::remove_all_extents_t<STRING>>;
-} || requires {
-    std::is_pointer_v<STRING>;
-    std::is_const_v<std::remove_pointer_t<STRING>>;
-    std::is_same_v<typename std::char_traits<std::remove_pointer_t<STRING>>::value_type, std::remove_pointer_t<STRING>>;
-};
+concept is_string_class = std::same_as<
+    typename STRING::traits_type::char_type,
+    typename STRING::value_type>;
+
+template <typename STRING>
+concept is_array_string = std::is_array_v<STRING> && is_char<std::remove_all_extents<STRING>>;
+
+template <typename STRING>
+concept is_pointer_string = std::is_pointer_v<STRING> && 
+    is_char<std::remove_pointer_t<STRING>>;
+
+template <typename STRING>
+concept is_string = is_string_class<STRING> 
+    || is_array_string<STRING> 
+    || is_pointer_string<STRING>;
+
+static_assert(!is_string<int>);
 
 constexpr auto as_string_view(const is_string auto& str)
 {

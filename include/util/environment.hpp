@@ -5,10 +5,10 @@
 #include "util/string.hpp"
 
 #include <concepts>
+#include <cstddef>
 #include <iterator>
 #include <algorithm>
 #include <set>
-#include <utility>
 #include <vector>
 #include <string_view>
 #include <cstdlib>
@@ -39,15 +39,19 @@ struct variable_name {
     explicit variable_name(const variable& other);
 
 public:
+    template <std::size_t N>
+    consteval explicit variable_name(const char (&var_name)[N]) noexcept
+    : my_name{var_name, N}
+    {}
+
     consteval explicit variable_name(const char *var_name, std::size_t size) noexcept
     : my_name{var_name, size}
     {}
 
-    explicit variable_name(std::string var_name)
-    : storage{var_name}
+    explicit variable_name(is_string auto var_name)
+    : storage{std::string{std::begin(var_name), std::ranges::find(var_name, SEPARATOR)}}
     , my_name{storage.value()}
     {}
-
 
     explicit variable_name(variable& var) :
         variable_name{const_cast<const variable&>(var)} // NOLINT: cppcoreguidelines-pro-type-const-cast 
@@ -56,6 +60,11 @@ public:
     constexpr std::size_t size() const noexcept
     {
         return my_name.size();
+    }
+
+    constexpr std::ptrdiff_t ssize() const noexcept
+    {
+        return static_cast<std::ptrdiff_t>(my_name.size());
     }
 
     std::string to_string() const 
@@ -116,81 +125,65 @@ struct variable {
     static constexpr auto SEPARATOR = '=';
 private:
     std::string definition;
-    std::optional<std::string_view> var_value;
+    std::string::size_type var_value;
     
     friend environment;
 
-    auto split() const noexcept {
-        auto pos = std::ranges::find(definition, SEPARATOR);
-        return std::pair{std::string_view{definition.begin(), pos}, std::string_view{std::next(pos), definition.end()}}; 
+    constexpr auto value_pos() const 
+    {
+        return var_value + 1;
     }
 
 public:
-    explicit variable(variable_name e_name) noexcept :
-        definition{e_name.to_string() + SEPARATOR},
-        var_value{}
-    {}
+  variable(variable_name name, std::string_view val) noexcept
+      : definition{name.to_string() + SEPARATOR + std::string(val)},
+        var_value{definition.find(SEPARATOR)} {}
 
-    variable(is_string auto name) noexcept:
-        definition(std::string(name) + SEPARATOR),
-        var_value{}
-    {}
+  explicit variable(variable_name name) noexcept
+      : variable{name, name.value_str().value_or("")} {}
 
-    variable(is_string auto name, std::string_view val) noexcept:
-        definition{to_string(name) + SEPARATOR + std::string(val)},
-        var_value{val}
-    {}
+  explicit variable(std::string_view def) noexcept
+      :  definition{def},
+        var_value{definition.find(SEPARATOR)}
+  {
+      if (var_value == std::string::npos) {
+          var_value = definition.size();
+          definition.push_back(SEPARATOR);
+      }
+  }
 
-    variable_name name() const
-    {
-        return variable_name{definition};
-    }
+  variable_name name() const {
+      return variable_name{definition};
+  }
 
-    void set(std::string value)
-    {
-        auto sep = std::ranges::find(definition, SEPARATOR);
-        definition.replace(sep, std::end(definition), SEPARATOR + value); 
-        var_value = std::string_view(sep, std::end(definition));
-    }
+  void set(std::string new_value)
+  {
+    definition.replace(value_pos(), definition.size(), new_value);
+  }
 
-    template <typename VALUE_T = std::string_view>
-    requires std::same_as<VALUE_T, std::string_view> || parseable<VALUE_T>
-    auto value() const 
-    {
-        auto val = split().second;
-        if constexpr (std::same_as<VALUE_T, std::string_view>) {
-            return val;
-        } else {
-            return from_string<VALUE_T>(val);
-        }
-    }
+  template <parseable VALUE_T = std::string_view>
+  auto value() const {
+    return from_string<VALUE_T>(value_str());
+  }
 
-    std::optional<std::string> value_str() const
-    {
-        auto val = value();
-        if (val.empty()) {
-            return {};
-        } else {
-            return std::string{val};
-        }
-    }
+  std::string value_str() const
+  {
+      return definition.substr(value_pos());
+  }
 
-    bool is_sync() const
-    {
-        return name().value() == value();
-    }
+  bool is_sync() const
+  {
+      return name().value() == value_str();
+  }
 
-    void update_system() const {
-        auto name_str = name().to_string();
-        if (var_value.has_value()) {
-            ::setenv(name_str.c_str(), std::string{var_value.value()}.c_str(), 1);
-        } else {
-            ::unsetenv(name_str.c_str());
-        }
-    }
-
-    void update() {
-    }
+  void update_system() const {
+      auto name_str = name().to_string();
+      if (var_value < definition.size()) {
+          ::setenv(name_str.c_str(), value_str().c_str(), 1);
+      } else {
+          ::unsetenv(name_str.c_str());
+      }
+  }
 
     auto definition_view() const
     {
@@ -246,29 +239,13 @@ private:
         return var.definition.data();
     }
 
-    void update()
-    {
-        std::ranges::sort(definitions, compare_names);
-        environ.clear();
-        for (auto& var: definitions) {
-            environ.push_back(var.definition.data());
-        }
-    }
-
-    auto add(variable var) {
-        if (auto old = std::ranges::find(definitions, var.name(), &variable::name); old != std::end(definitions)) {
-            definitions.erase(old);
-        }
-        definitions.push_back(var);
-    }
-
     struct mod {
         environment& self; // NOLINT: cppcoreguidelines-avoid-const-or-ref-data-members
         variable update;
 
-        mod(environment& me, std::string_view n)
+        mod(environment& me, std::string_view name)
           : self{ me }
-          , update{ n }
+          , update{ variable_name{name} }
         {}
 
         void operator=(stringable auto value) // NOLINT: cppcoreguidelines-c-copy-assignment-signature
@@ -285,13 +262,27 @@ private:
 
 public:
     environment() = default;
+
     explicit environment(const char **environment_)
        : definitions{}
     {
         while(environment_ != nullptr) {
-            definitions.emplace_back(std::string{*environment_});
+            definitions.emplace_back(variable{*environment_});
             environment_++;
         }
+    }
+
+    char* const* getEnv() const
+    {
+        return environ.data();
+    }
+
+    void add(variable var)
+    {
+        if (auto old = std::ranges::find(definitions, var.name(), &variable::name); old != std::end(definitions)) {
+            definitions.erase(old);
+        }
+        definitions.push_back(var);
     }
 
     template <parseable RESULT_T>
@@ -301,7 +292,7 @@ public:
         if (it == std::end(definitions)) {
             return {};
         }
-        return from_string<RESULT_T>(it->value());
+        return it->value<RESULT_T>();
     }
 
     bool contains(std::string name) 
