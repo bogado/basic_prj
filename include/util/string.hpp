@@ -138,10 +138,10 @@ static_assert(test2.view() == test3.substr(0, 3));
 }  // namespace literals
 
 template <typename CHAR>
-concept is_char = std::same_as<char, CHAR>
-    || std::same_as<char8_t, CHAR>
-    || std::same_as<char16_t, CHAR>
-    || std::same_as<char32_t, CHAR>;
+concept is_char = std::same_as<char, std::remove_cv_t<CHAR>>
+    || std::same_as<char8_t, std::remove_cv_t<CHAR>>
+    || std::same_as<char16_t, std::remove_cv_t<CHAR>>
+    || std::same_as<char32_t, std::remove_cv_t<CHAR>>;
 
 template <typename STRING>
 concept is_string_class = std::same_as<

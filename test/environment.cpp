@@ -12,6 +12,7 @@ TEST_CASE("variable", "[variable]")
     REQUIRE(test.name() == "test"_env);
     REQUIRE(test.value<std::string>() == ""sv);
     REQUIRE(test.value_str() == ""sv);
+    REQUIRE(!test.has_value());
     test.set("value");
     REQUIRE(test.value_str() == "value");
 }
@@ -29,6 +30,23 @@ TEST_CASE("environment_test", "[environment]")
     REQUIRE(env_test.get<std::string>("test") == "value");
     REQUIRE(env_test.get<std::string>("check") == "32");
     REQUIRE(env_test.get<int>("check") == 32);
+}
+
+TEST_CASE("enviroment_defintions", "[environment,definition]")
+{
+    env::environment env_test{};
+    auto env = env_test.getEnv();
+
+    REQUIRE(env != nullptr);
+    REQUIRE(*env == nullptr); 
+
+    env_test.set("USER") = "me";
+    REQUIRE(env_test.import("HOME"));
+    env = env_test.getEnv();
+
+    REQUIRE(env[0] != nullptr);
+    REQUIRE(env[1] != nullptr);
+    REQUIRE(env[2] == nullptr);
 }
 
 }
