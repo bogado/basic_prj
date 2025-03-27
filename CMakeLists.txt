@@ -80,4 +80,5 @@ set(UTILS_TEST_ENABLED FALSE CACHE BOOL "Enable building the tests for the utili
 if(UTILS_TEST_ENABLED) 
     add_subdirectory(test)
     add_test(NAME BasicUtilsTests COMMAND basic_utils_test)
+    setup_target(basic_utils_test PRIVATE)
 endif()

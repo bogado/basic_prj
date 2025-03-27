@@ -40,7 +40,7 @@ function(enable_sanitizers project_name)
 
   if(LIST_OF_SANITIZERS)
     if(NOT "${LIST_OF_SANITIZERS}" STREQUAL "")
-        target_compile_definitions(${project_name} PRIVATE -fsanitize=${LIST_OF_SANITIZERS} ${ARGV})
+        target_compile_options(${project_name} INTERFACE -fsanitize=${LIST_OF_SANITIZERS})
         target_link_options(${project_name} PRIVATE -fsanitize=${LIST_OF_SANITIZERS})
     endif()
   endif()

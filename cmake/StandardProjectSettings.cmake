@@ -49,7 +49,9 @@ endif()
 
 function(setup_target target type)
     set_project_warnings(${target} ${type})
-    enable_sanitizers(${target})
+    if(NOT type STREQUAL "INTERFACE")
+        enable_sanitizers(${target})
+    endif()
     set_target_properties(${target} PROPERTIES
         CMAKE_CXX_STANDARD 23
         CMAKE_CXX_EXTENSIONS False)
