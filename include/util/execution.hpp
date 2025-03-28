@@ -6,6 +6,7 @@
 #include "pipe.hpp"
 
 #include "./filesystem.hpp"
+#include "util/environment.hpp"
 
 #include <array>
 #include <concepts>
@@ -135,7 +136,7 @@ private:
                     std::forward<EXECUTABLE_T>(exec)(io, open_pipe.value());
                 }
             }
-        }
+       }
     };
 
     redirection_pipes pipes;
@@ -188,6 +189,7 @@ public:
     auto execute(
          PATH_LIKE_T exe,
          const std::array<std::string, SIZE>& args,
+         std::optional<env::environment> environment = {},
          fs::path cwd = fs::current_path(),
          std::source_location source = std::source_location::current())
     {
@@ -204,9 +206,10 @@ public:
 
         std::ranges::copy(args, ++it);
 
+        auto environ = environment.has_value() ? environment.value().getEnv() : std::vector<std::string>{};
         auto result = spawner(
             std::same_as<PATH_LIKE_T, fs::path> ? sys::lookup::NO_LOOKUP : sys::lookup::PATH,
-            all_args);
+            all_args, environ);
         
         pid = spawner.get_pid();
 
@@ -216,9 +219,13 @@ public:
         return result;
     }
 
-    auto execute(is_path_like auto exe, fs::path cwd = fs::current_path())
+    auto execute(
+         is_path_like auto exe,
+         std::optional<env::environment> environment = {},
+         fs::path cwd = fs::current_path(),
+         std::source_location source = std::source_location::current())
     {
-        execute<0>(exe, {}, cwd);
+        return execute(exe, std::array<std::string, 0>{}, environment, cwd, source);
     }
 
     auto done(std_io io)

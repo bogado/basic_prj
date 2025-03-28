@@ -1,5 +1,8 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
+#include <catch2/matchers/catch_matchers_contains.hpp>
+#include <catch2/matchers/catch_matchers_vector.hpp>
 
 #include "util/environment.hpp"
 
@@ -37,16 +40,14 @@ TEST_CASE("enviroment_defintions", "[environment,definition]")
     env::environment env_test{};
     auto env = env_test.getEnv();
 
-    REQUIRE(env != nullptr);
-    REQUIRE(*env == nullptr); 
+    REQUIRE(env.empty());
 
     env_test.set("USER") = "me";
     REQUIRE(env_test.import("HOME"));
     env = env_test.getEnv();
 
-    REQUIRE(env[0] != nullptr);
-    REQUIRE(env[1] != nullptr);
-    REQUIRE(env[2] == nullptr);
+    REQUIRE(env.size() == 2);
+    REQUIRE_THAT(env, Catch::Matchers::VectorContains("USER=me"s));
 }
 
 }

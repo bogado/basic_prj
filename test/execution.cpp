@@ -41,25 +41,19 @@ TEST_CASE("Execution of external command", "[execute][pipe][buffer][generator]")
     REQUIRE(handler.wait() == 0);
 }
 
-#if 0 // This test is not yet working as expected
-TEST_CASE("Execution of a external command that reads the stdin", "[execute][pipe][buffer][generator]")
+TEST_CASE("Execution of external command with environment", "[execute][pipe][buffer][generator][environment]")
 {
-    auto handler = vb::execution(vb::fs::path("/usr/bin/sed"), std::array{ std::string("s/[24680]/./") });
-    auto data = std::array {
-        std::pair{ "12345678", "1.3.5.7." },
-        std::pair{ "abcef", "abcef" },
-        std::pair{ "", ""},
-        std::pair{ "a1b2", "a1b." }
-    };
-
-    auto load = handler.stdout_lines();
-    auto reader = load.begin();
-    for (auto [ send, recieve ] : data)
-    {
-        handler.send_line(send);
-        auto read = *reader;
-        ++reader;
-        CHECK(read == recieve);
+    auto handler = vb::execution(vb::io_set::OUT);
+    auto environment = vb::env::environment{};
+    environment.import("PATH");
+    environment.import("HOME");
+    environment.import("USER");
+    environment.set("A") = "a";
+    handler.execute(vb::fs::path{"/bin/bash"}, std::array{"-c"s, "echo $A"s}, environment);
+    std::string result;
+    for (auto line : handler.lines<vb::std_io::OUT>()) {
+        result += line;
     }
+    REQUIRE(result == "a\n");
 }
-#endif
+

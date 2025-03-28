@@ -223,7 +223,7 @@ public:
     }
 };
 
-variable_name::variable_name(const variable& var)
+inline variable_name::variable_name(const variable& var)
     : storage{std::string{var.name().raw_view()}}
     , end_location{find_end()}
 {}
@@ -250,7 +250,6 @@ private:
     }
 
     std::vector<variable> definitions{};
-    std::vector<const char *> environ{1, nullptr};
 
     static auto grab_data(variable& var)
     {
@@ -277,33 +276,12 @@ private:
     {
         return std::ranges::find(definitions, variable_name{lookup}, &variable::name);
     }
-
-    void update_environ()
-    {
-        std::size_t pos = 0;
-        for (auto& definition : definitions) {
-            if (environ[pos] == nullptr) {
-                environ.push_back(nullptr);
-            }
-            environ[pos] = definition.data();
-            pos++;
-        }
-    }
 public:
     environment() = default;
 
-    explicit environment(const char **environment_)
-       : definitions{}
+    auto getEnv() const
     {
-        while(environment_ != nullptr) {
-            definitions.emplace_back(variable{*environment_});
-            environment_++;
-        }
-    }
-
-    const char* const* getEnv() const
-    {
-        return environ.data();
+        return std::ranges::to<std::vector>(definitions | std::views::transform([](const variable& var) { return var.to_string(); }));
     }
 
     void add(variable var)
@@ -312,7 +290,6 @@ public:
             definitions.erase(old);
         }
         definitions.push_back(var);
-        update_environ();
     }
 
     bool import(auto var)
