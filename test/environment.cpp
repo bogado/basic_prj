@@ -8,6 +8,15 @@
 
 namespace vb::testing {
 
+TEST_CASE("variable_name", "[variable_name]")
+{
+    using namespace vb::literals;
+    env::variable_name test = "Test123"_env;
+    REQUIRE(test.name() == "Test123");
+    REQUIRE(!test.value_from_system().has_value());
+    REQUIRE(test.value_or("hi") == "hi");
+}
+
 TEST_CASE("variable", "[variable]")
 {
     using namespace vb::literals;

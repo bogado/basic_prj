@@ -92,12 +92,22 @@ public:
         return raw_view().substr(0, end_location);
     }
 
-    std::string to_string() const noexcept
+    constexpr std::string to_string() const noexcept
     {
         return std::string{name()};
     }
 
-    std::optional<std::string> value_from_system() const noexcept
+   constexpr std::string value_or(const std::string& default_value) const noexcept
+    {
+        auto var = to_string();
+        if(auto value = ::getenv(var.c_str()); value != nullptr) {
+            return std::string{value};
+        } else {
+            return default_value;
+        }
+    }
+
+    constexpr std::optional<std::string> value_from_system() const noexcept
     {
         auto var = to_string();
         if(auto value = ::getenv(var.c_str()); value != nullptr) {
