@@ -149,7 +149,9 @@ concept is_string_class = std::same_as<
     typename STRING::value_type>;
 
 template <typename STRING>
-concept is_array_string = std::is_array_v<STRING> && is_char<std::remove_all_extents<STRING>>;
+concept is_array_string = std::is_array_v<STRING> && is_char<std::remove_all_extents_t<STRING>>;
+
+static_assert(is_array_string<char[3]>); // NOLINT(cppcoreguidelines-avoid-c-arrays)
 
 template <typename STRING>
 concept is_pointer_string = std::is_pointer_v<STRING> && 

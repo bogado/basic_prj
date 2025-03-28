@@ -97,16 +97,6 @@ public:
         return std::string{name()};
     }
 
-   constexpr std::string value_or(const std::string& default_value) const noexcept
-    {
-        auto var = to_string();
-        if(auto value = ::getenv(var.c_str()); value != nullptr) {
-            return std::string{value};
-        } else {
-            return default_value;
-        }
-    }
-
     constexpr std::optional<std::string> value_from_system() const noexcept
     {
         auto var = to_string();
@@ -114,6 +104,26 @@ public:
             return std::string{value};
         } else {
             return {};
+        }
+    }
+
+    template <parseable RESULT_T>
+    constexpr RESULT_T value_or(const RESULT_T& default_value) const noexcept
+    {
+        auto var = to_string();
+        if(auto value = ::getenv(var.c_str()); value != nullptr) {
+            return vb::from_string<RESULT_T>(value);
+        } else {
+            return default_value;
+        }
+    }
+
+    constexpr std::string value_or(const is_string auto& default_value) const noexcept
+    {
+        if(auto value = value_from_system(); value.has_value()) {
+            return std::string{value.value()};
+        } else {
+            return std::string{default_value};
         }
     }
 
