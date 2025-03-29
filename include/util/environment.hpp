@@ -264,6 +264,8 @@ struct environment {
     static constexpr auto SEPARATOR = '\0';
     static constexpr auto VALUE_SEPARATOR = '=';
 
+    using optional = std::optional<environment>;
+
 private:
     static bool compare_names(const variable& a, const variable& b) {
         return a.name().raw_string() < b.name().raw_string();

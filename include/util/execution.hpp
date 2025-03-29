@@ -189,7 +189,7 @@ public:
     auto execute(
          PATH_LIKE_T exe,
          const std::array<std::string, SIZE>& args,
-         std::optional<env::environment> environment = {},
+         env::environment::optional environment = {},
          fs::path cwd = fs::current_path(),
          std::source_location source = std::source_location::current())
     {
@@ -221,7 +221,7 @@ public:
 
     auto execute(
          is_path_like auto exe,
-         std::optional<env::environment> environment = {},
+         env::environment::optional environment = {},
          fs::path cwd = fs::current_path(),
          std::source_location source = std::source_location::current())
     {
