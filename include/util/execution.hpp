@@ -185,9 +185,9 @@ public:
         }
     }
 
-    template <std::size_t SIZE, is_path_like PATH_LIKE_T>
+    template <std::size_t SIZE>
     auto execute(
-         PATH_LIKE_T exe,
+         fs::path exe,
          const std::array<std::string, SIZE>& args,
          env::environment::optional environment = {},
          fs::path cwd = fs::current_path(),
@@ -205,12 +205,11 @@ public:
         *it = exe;
 
         std::ranges::copy(args, ++it);
+        auto lookup = exe.is_absolute() ? sys::lookup::NO_LOOKUP : sys::lookup::PATH;
 
         auto environ = environment.has_value() ? environment.value().getEnv() : std::vector<std::string>{};
-        auto result = spawner(
-            std::same_as<PATH_LIKE_T, fs::path> ? sys::lookup::NO_LOOKUP : sys::lookup::PATH,
-            all_args, environ);
-        
+        auto result = spawner(lookup, all_args, environ);
+
         pid = spawner.get_pid();
 
         pipes.for_each_pipe([&](std_io io, vb::pipe& open_pipe) {
