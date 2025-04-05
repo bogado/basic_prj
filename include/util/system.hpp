@@ -105,11 +105,7 @@ constexpr auto throw_on_error(std::string_view name, INVOCABLE invocable, std::a
 }
 
 template <typename ARG_TYPE>
-concept is_arguments_type = std::ranges::viewable_range<ARG_TYPE> &&
-requires(ARG_TYPE args)
-{
-    { std::data(*std::begin(args)) } -> std::same_as<char*>;
-};
+concept is_arguments_type = std::ranges::sized_range<ARG_TYPE> && is_string<std::ranges::range_value_t<ARG_TYPE>>;
 
 struct Args {
     using c_holder = std::vector<char *>;

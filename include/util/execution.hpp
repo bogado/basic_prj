@@ -8,11 +8,15 @@
 #include "./filesystem.hpp"
 #include "util/environment.hpp"
 
+#include <algorithm>
 #include <array>
 #include <concepts>
 #include <cstdint>
+#include <iterator>
+#include <ranges>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 
 namespace vb {
@@ -144,6 +148,19 @@ private:
     sys::status_type current_status{};
     sys::spawn spawner{};
 
+    auto make_args(fs::path exec, std::ranges::sized_range auto arguments)
+    {
+        auto result = std::pair{std::vector<std::string>{1, exec.string()}, std::vector<const char*>{}};
+        result.first.reserve(std::ranges::size(arguments) + 1);
+        result.second.reserve(std::ranges::size(arguments) + 1);
+        std::ranges::copy(arguments | std::views::transform([](const auto& dt) { return dt.c_str(); }), std::back_insert_iterator(result.first));
+        std::ranges::copy(result.first |
+                              std::views::transform(
+                                  [](const auto &arg) { return arg.data(); }),
+                          std::back_insert_iterator(result.second));
+        return result;
+    }
+
 public:
     execution(io_set redirections = io_set::NONE) :
         pipes{redirections}
@@ -185,10 +202,9 @@ public:
         }
     }
 
-    template <std::size_t SIZE>
     auto execute(
          fs::path exe,
-         const std::array<std::string, SIZE>& args,
+         std::ranges::sized_range auto args,
          env::environment::optional environment = {},
          fs::path cwd = fs::current_path(),
          std::source_location source = std::source_location::current())
@@ -200,15 +216,12 @@ public:
             spawner.add_close (open_pipe.get_fd(direction(io)), source);
         });
 
-        std::array<std::string, SIZE+1> all_args;
-        auto it = all_args.begin();
-        *it = exe;
+        auto all_args = make_args(exe, args);
 
-        std::ranges::copy(args, ++it);
         auto lookup = exe.is_absolute() ? sys::lookup::NO_LOOKUP : sys::lookup::PATH;
 
         auto environ = environment.has_value() ? environment.value().getEnv() : std::vector<std::string>{};
-        auto result = spawner(lookup, all_args, environ);
+        auto result = spawner(lookup, all_args.second, environ);
 
         pid = spawner.get_pid();
 

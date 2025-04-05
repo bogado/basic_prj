@@ -13,6 +13,17 @@ static constexpr auto test_dir = []() {
     return dir;
 }();
 
+static constexpr auto test_data = []() {
+    static constexpr decltype(auto) data_dir = "/test_data\0";
+    static constexpr auto dir = []() {
+        std::array<char, std::size(test_dir) + sizeof(data_dir)> data{};
+        auto out = std::ranges::copy(test_dir, std::ranges::begin(data)).out;
+        std::ranges::copy(data_dir, out);
+        return data;
+    }();
+    return std::string_view{dir.data()};
+}();
+
 using namespace std::literals;
 
 static constexpr auto expected = std::array{
@@ -26,7 +37,7 @@ using namespace std::literals;
 TEST_CASE("Execution of external command", "[execute][pipe][buffer][generator]")
 {
     auto handler = vb::execution(vb::io_set::OUT);
-    handler.execute(vb::fs::path("/bin/ls"sv), std::array{(vb::fs::path(test_dir) / "test_data").string()});
+    handler.execute(vb::fs::path("/bin/ls"sv), std::array{vb::fs::path{test_data}});
     auto expectation = expected.begin();
     for (auto line : handler.lines<vb::std_io::OUT>()) {
         if (line == "") {
@@ -38,6 +49,25 @@ TEST_CASE("Execution of external command", "[execute][pipe][buffer][generator]")
     }
     CHECK(std::distance(expectation, expected.end()) == 0);
 
+    REQUIRE(handler.wait() == 0);
+}
+
+TEST_CASE("Execution ranges read", "[execute][pipe][ranges][generator]")
+{
+    auto handler = vb::execution(vb::io_set::OUT);
+    handler.execute(vb::fs::path("/bin/ls"sv), std::array{vb::fs::path{test_data}});
+    auto lines = std::vector<std::string>{};
+
+    std::ranges::copy(handler.lines<vb::std_io::OUT>(), std::back_inserter(lines));
+    REQUIRE(handler.wait() == 0);
+}
+
+
+TEST_CASE("Execution with vector", "[execute][pipe][buffer][generator]")
+{
+    auto handler = vb::execution();
+    std::vector<std::string> args{ "hello", "world" };
+    handler.execute("echo"s, args);
     REQUIRE(handler.wait() == 0);
 }
 

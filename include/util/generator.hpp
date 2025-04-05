@@ -5,6 +5,7 @@
 #include <iterator>
 #include <optional>
 #include <exception>
+#include <cstdint>
 
 namespace vb {
 
@@ -87,6 +88,8 @@ public:
 
     struct iterator {
         using value_type = generator::value_type;
+        using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
 
         mutable generator *self = nullptr;
 
@@ -96,6 +99,12 @@ public:
 
         reference operator*() const {
             return self->current;
+        }
+
+        iterator operator++(int) {
+            auto other = *this;
+            self->current = self->next();
+            return other;
         }
 
         iterator& operator++() {
