@@ -86,6 +86,7 @@ public:
         return !handle.done();
     }
 
+    using sentinel = std::default_sentinel_t;
     struct iterator {
         using value_type = generator::value_type;
         using difference_type = std::ptrdiff_t;
