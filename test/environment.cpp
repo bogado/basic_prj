@@ -33,15 +33,21 @@ TEST_CASE("environment_test", "[environment]")
 {
     env::environment env_test{};
     REQUIRE(env_test.size() == 0);
+    REQUIRE(!env_test.get("test").has_value());
+    REQUIRE(!env_test.value_for("test").has_value());
+
     env_test.set("test") = "value";
     REQUIRE(env_test.size() == 1);
+    REQUIRE(env_test.value_for("test").has_value());
+    REQUIRE(env_test.value_for("test").value() == "value");
 
     env_test.set("check") = 32;
     REQUIRE(env_test.size() == 2);
 
-    REQUIRE(env_test.get<std::string>("test") == "value");
-    REQUIRE(env_test.get<std::string>("check") == "32");
-    REQUIRE(env_test.get<int>("check") == 32);
+    REQUIRE(env_test.get("test").has_value());
+    REQUIRE(env_test.get("test").value().value_str() == "value");
+    REQUIRE(env_test.get("check").has_value());
+    REQUIRE(env_test.get("check").value().value_str() == "32");
 }
 
 TEST_CASE("enviroment_defintions", "[environment,definition]")

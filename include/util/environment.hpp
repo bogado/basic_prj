@@ -137,6 +137,8 @@ public:
 
 struct variable {
     static constexpr auto SEPARATOR = '=';
+
+    using optional = std::optional<variable>;
 private:
     std::string definition;
     std::string::size_type var_value;
@@ -321,14 +323,22 @@ public:
         return definition.has_value();
     }
 
-    template <parseable RESULT_T>
-    RESULT_T get(std::string name) const
+    variable::optional get(std::string name) const
     {
         auto it = lookup_name(name);
         if (it == std::end(definitions)) {
             return {};
         }
-        return it->value<RESULT_T>();
+        return *it;
+    }
+
+    std::optional<std::string> value_for(std::string name) const
+    {
+        if (auto variable = get(name); variable.has_value() && variable.value().has_value()) {
+            return variable.value().value_str();
+        } else {
+            return {};
+        }
     }
 
     bool contains(std::string name) const
