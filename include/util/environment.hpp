@@ -142,7 +142,7 @@ struct variable {
 private:
     std::string definition;
     std::string::size_type var_value;
-    
+
     friend environment;
 
     constexpr auto value_pos() const 
@@ -151,63 +151,64 @@ private:
     }
 
 public:
-  variable(variable_name name, std::string_view val) noexcept
-      : definition{name.raw_string() + SEPARATOR + std::string(val)},
+    variable(variable_name name, std::string_view val) noexcept
+        : definition{name.raw_string() + SEPARATOR + std::string(val)},
         var_value{definition.find(SEPARATOR)} {}
 
-  explicit variable(variable_name name) noexcept
-      : variable{name, name.value_from_system().value_or("")} {}
+    explicit variable(variable_name name) noexcept
+        : variable{name, name.value_from_system().value_or("")} {}
 
-  explicit variable(std::string_view def) noexcept
-      :  definition{def},
+    explicit variable(std::string_view def) noexcept
+        :  definition{def},
         var_value{definition.find(SEPARATOR)}
-  {
-      if (var_value == std::string::npos) {
-          var_value = definition.size();
-          definition.push_back(SEPARATOR);
-      }
-  }
+    {
+        if (var_value == std::string::npos) {
+            var_value = definition.size();
+            definition.push_back(SEPARATOR);
+        }
+    }
 
-  variable_name name() const {
-      return variable_name{definition};
-  }
+    variable_name name() const {
+        return variable_name{definition};
+    }
 
-  const char* data() const {
-      return definition.data();
-  }
+    const char* data() const {
+        return definition.data();
+    }
 
-  void set(std::string new_value)
-  {
-    definition.replace(value_pos(), definition.size(), new_value);
-  }
+    void set(std::string new_value)
+    {
+        definition.replace(value_pos(), definition.size(), new_value);
+    }
 
-  template <parseable VALUE_T = std::string_view>
-  auto value() const {
-    return from_string<VALUE_T>(value_str());
-  }
+    template <parseable VALUE_T = std::string_view>
+        auto value() const {
+            return from_string<VALUE_T>(value_str());
+        }
 
-  bool has_value() {
-      return definition.size() != value_pos();
-  }
+    bool has_value() {
+        return definition.size() != value_pos();
+    }
 
-  std::string value_str() const
-  {
-      return definition.substr(value_pos());
-  }
+    std::string value_str() const
+    {
+        return definition.substr(value_pos());
+    }
 
-  bool is_sync() const
-  {
-      return name().value_from_system() == value_str();
-  }
+    bool is_sync() const
+    {
+        return name().value_from_system() == value_str();
+    }
 
-  void update_system() const {
-      auto name_str = name().raw_string();
-      if (var_value < definition.size()) {
-          ::setenv(name_str.c_str(), value_str().c_str(), 1);
-      } else {
-          ::unsetenv(name_str.c_str());
-      }
-  }
+    void update_system() const
+    {
+        auto name_str = name().raw_string();
+        if (var_value < definition.size()) {
+            ::setenv(name_str.c_str(), value_str().c_str(), 1);
+        } else {
+            ::unsetenv(name_str.c_str());
+        }
+    }
 
     auto definition_view() const
     {
@@ -216,9 +217,9 @@ public:
 
     auto to_string() const
         -> std::string
-    {
-        return definition;
-    }
+        {
+            return definition;
+        }
 
     static variable from_system(variable_name name) {
         if (auto value = name.value_from_system(); value.has_value()) {
