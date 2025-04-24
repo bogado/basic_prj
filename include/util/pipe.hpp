@@ -3,51 +3,47 @@
 #ifndef INCLUDED_PIPE_HPP
 #define INCLUDED_PIPE_HPP
 
-#include "system.hpp"
 #include "buffer.hpp"
 #include "converters.hpp"
+#include "system.hpp"
+#include <unistd.h>
 
+#include <array>
 #include <concepts>
+#include <cstddef>
+#include <expected>
+#include <iostream>
 #include <stdexcept>
 #include <system_error>
 #include <utility>
-#include <array>
-#include <expected>
-#include <cstddef>
-#include <iostream>
-
-#include <unistd.h>
 
 namespace vb {
 
-enum class io_direction {
-    NONE = 0,
-    READ = 1,
+enum class io_direction
+{
+    NONE  = 0,
+    READ  = 1,
     WRITE = 2,
-    BOTH = 3
+    BOTH  = 3
 };
 
 constexpr inline auto
-operator bitor(io_direction rhs, io_direction lhs)
--> io_direction
+operator bitor(io_direction rhs, io_direction lhs) -> io_direction
 {
     return static_cast<io_direction>(std::to_underlying(rhs) bitor std::to_underlying(lhs));
 }
 
 constexpr inline auto
-operator bitand(io_direction rhs, io_direction lhs)
--> io_direction
+operator bitand(io_direction rhs, io_direction lhs) -> io_direction
 {
     return static_cast<io_direction>(std::to_underlying(rhs) bitand std::to_underlying(lhs));
 }
 
 constexpr inline auto
-operator not(io_direction dir)
--> io_direction
+operator not(io_direction dir) -> io_direction
 {
     using enum io_direction;
-    switch(dir)
-    {
+    switch (dir) {
     case READ:
         return WRITE;
     case WRITE:
@@ -59,12 +55,12 @@ operator not(io_direction dir)
     }
 }
 
-inline std::error_category& pipe_error_category() {
-    struct pipe_error_category : std::error_category {
-        const char * name() const noexcept override
-        {
-            return "VB pipe";
-        }
+inline std::error_category&
+pipe_error_category()
+{
+    struct pipe_error_category : std::error_category
+    {
+        const char *name() const noexcept override { return "VB pipe"; }
 
         std::string message(int ev) const noexcept override
         {
@@ -75,16 +71,15 @@ inline std::error_category& pipe_error_category() {
                 return "No data available";
             default:
                 return "unexpected error code";
-
             }
         }
 
-        std::error_condition default_error_condition(int ev) const noexcept override 
+        std::error_condition default_error_condition(int ev) const noexcept override
         {
-            return std::error_condition{ev, *this};
+            return std::error_condition{ ev, *this };
         }
 
-        bool equivalent(int code, const std::error_condition &condition) const noexcept override
+        bool equivalent(int code, const std::error_condition& condition) const noexcept override
         {
             if (condition.category() == *this) {
                 return code == condition.value();
@@ -93,16 +88,16 @@ inline std::error_category& pipe_error_category() {
                 return true;
             }
             return false;
-
         }
     };
     static pipe_error_category instance{};
 
-    return instance; 
+    return instance;
 }
 
-template <std::size_t BUFFER_SIZE = (4 * KB)>
-struct pipe_base {
+template<std::size_t BUFFER_SIZE = (4 * KB)>
+struct pipe_base
+{
     using buffer_type = vb::buffer_type<BUFFER_SIZE>;
     using enum io_direction;
 
@@ -111,20 +106,19 @@ private:
     {
         using enum io_direction;
         switch (dir) {
-            case READ:
-                return 0;
-            case WRITE:
-                return 1;
-            default:
-                return 0;
+        case READ:
+            return 0;
+        case WRITE:
+            return 1;
+        default:
+            return 0;
         }
     }
 
-    std::array<int,2> file_descriptors{-1,-1};
-    buffer_type buffer;
+    std::array<int, 2> file_descriptors{ -1, -1 };
+    buffer_type        buffer;
 
-    auto buffer_load(char* data, std::size_t size)
-        -> long
+    auto buffer_load(char *data, std::size_t size) -> long
     {
         if (closed()) {
             return 0;
@@ -149,13 +143,12 @@ private:
         return read_size;
     };
 
-    auto buffer_load()
-        -> long 
+    auto buffer_load() -> long
     {
-        return buffer.load([this](char* data, std::size_t size) { return buffer_load(data, size); });
+        return buffer.load([this](char *data, std::size_t size) { return buffer_load(data, size); });
     }
 
-    void redirect_fd(int& to_fd, int updated_fd) 
+    void redirect_fd(int& to_fd, int updated_fd)
     {
         if (to_fd == updated_fd) {
             return;
@@ -175,20 +168,20 @@ private:
         return file_descriptors.at(index(dir));
     }
 
-    bool can_be_read() const 
+    bool can_be_read() const
     {
         if (!is<io_direction::READ>()) {
             return false;
         }
 
         using namespace std::literals;
-        return (sys::poll(0ms, sys::poll_arg {
-            .fd = file_descriptors[index(READ)],
-            .events = POLLIN})[0] & POLLIN) != 0;
+        return (sys::poll(0ms, sys::poll_arg{ .fd = file_descriptors[index(READ)], .events = POLLIN })[0] & POLLIN) !=
+               0;
     }
+
 public:
     using expect_string = std::expected<std::string, std::error_code>;
-    using unexpected = std::unexpected<std::error_code>;
+    using unexpected    = std::unexpected<std::error_code>;
 
     constexpr int get_fd(io_direction dir) const
     {
@@ -199,13 +192,13 @@ public:
         return file_descriptors.at(index(dir));
     }
 
-    template <io_direction DIR>
+    template<io_direction DIR>
     constexpr int get_fd() const
     {
         return get_fd(DIR);
     }
-    
-    constexpr io_direction direction() const 
+
+    constexpr io_direction direction() const
     {
         io_direction result = NONE;
         if (get_fd<READ>() > 0) {
@@ -217,27 +210,18 @@ public:
         return result;
     }
 
-    template <io_direction DIR>
+    template<io_direction DIR>
     void redirect(int fd)
     {
         redirect_fd(ref_fd(DIR), fd);
     }
 
     // TODO: Support for writting.
-    void redirect_in()
-    {
-        redirect<READ>(0);
-    }
+    void redirect_in() { redirect<READ>(0); }
 
-    void redirect_out()
-    {
-        redirect<WRITE>(1);
-    }
+    void redirect_out() { redirect<WRITE>(1); }
 
-    void redirect_err()
-    {
-        redirect<WRITE>(2);
-    }
+    void redirect_err() { redirect<WRITE>(2); }
 
     void close(io_direction dir)
     {
@@ -256,7 +240,7 @@ public:
         fd = -1;
     }
 
-    template <io_direction DIR>
+    template<io_direction DIR>
     void close()
     {
         close(DIR);
@@ -272,41 +256,36 @@ public:
         }
     }
 
-    void set_direction(io_direction dir)
-    {
-        close(!dir);
-    }
+    void set_direction(io_direction dir) { close(!dir); }
 
-    template <io_direction DIR>
-    requires(DIR != io_direction::BOTH && DIR != io_direction::NONE)
+    template<io_direction DIR>
+        requires(DIR != io_direction::BOTH && DIR != io_direction::NONE)
     void set_direction()
     {
         set_direction(DIR);
     }
 
-    template <io_direction DIR> 
+    template<io_direction DIR>
     bool is() const
     {
         return direction() == BOTH || direction() == DIR;
     }
 
-    bool closed() const {
+    bool closed() const
+    {
         if (buffer.has_data()) {
             return false;
         }
-        return (is<READ>()  && file_descriptors[index(READ)] == -1)
-            && (is<WRITE>() && file_descriptors[index(WRITE)] == -1);
-   }
-
-    bool has_data() const {
-        return buffer.has_data() || can_be_read();
+        return (is<READ>() && file_descriptors[index(READ)] == -1) &&
+               (is<WRITE>() && file_descriptors[index(WRITE)] == -1);
     }
 
-    template <can_be_outstreamed... DATA_Ts>
+    bool has_data() const { return buffer.has_data() || can_be_read(); }
+
+    template<can_be_outstreamed... DATA_Ts>
     auto operator()(DATA_Ts... data)
     {
-        for (auto str : std::array{ to_string(data)... })
-        {
+        for (auto str : std::array{ to_string(data)... }) {
             sys::write(file_descriptors[index(WRITE)], str.data(), str.size());
             if (str.back() != '\n') {
                 sys::write(file_descriptors[index(WRITE)], "\n", 1);
@@ -318,47 +297,46 @@ public:
     {
         auto result = std::string();
 
-        while (result.size() == 0 && result.back() != '\n')
-        {
-            if (!buffer.has_data() && can_be_read())
-            {
+        while (result.size() == 0 && result.back() != '\n') {
+            if (!buffer.has_data() && can_be_read()) {
                 buffer_load();
             } else if (!buffer.has_data()) {
-                return unexpected(std::error_code{1, pipe_error_category()});
+                return unexpected(std::error_code{ 1, pipe_error_category() });
             }
 
             if (buffer.has_data()) {
                 result += buffer.unload_line();
             }
         }
-        return expect_string{result};
+        return expect_string{ result };
     }
 
-    pipe_base() :
-        file_descriptors(sys::pipe())
-    {}
+    pipe_base()
+        : file_descriptors(sys::pipe())
+    {
+    }
 
     pipe_base(const pipe_base&) = delete;
 
-    pipe_base(pipe_base&& other) noexcept :
-        file_descriptors{other.file_descriptors}
+    pipe_base(pipe_base&& other) noexcept
+        : file_descriptors{ other.file_descriptors }
     {
-        other.file_descriptors = { -1, -1};
+        other.file_descriptors = { -1, -1 };
     }
 
     pipe_base& operator=(const pipe_base&) = delete;
-    pipe_base& operator=(pipe_base&& other) noexcept {
+    pipe_base& operator=(pipe_base&& other) noexcept
+    {
         close();
         std::swap(file_descriptors, other.file_descriptors);
     }
 
-    ~pipe_base()
-    {
-        close_all();
-    }
+    ~pipe_base() { close_all(); }
 
-    friend std::ostream& operator<<(std::ostream& out, const pipe_base& self) {
-        return out << "Pipe{" << self.file_descriptors[0] << ", " << self.file_descriptors[1] << ", " << self.buffer << "}";
+    friend std::ostream& operator<<(std::ostream& out, const pipe_base& self)
+    {
+        return out << "Pipe{" << self.file_descriptors[0] << ", " << self.file_descriptors[1] << ", " << self.buffer
+                   << "}";
     }
 };
 

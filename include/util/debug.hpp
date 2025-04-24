@@ -3,16 +3,16 @@
 #ifndef INCLUDED_DEBUG_HPP
 #define INCLUDED_DEBUG_HPP
 
+#include "string.hpp"
+#include <unistd.h>
+
 #include <concepts>
 #include <iostream>
 #include <iterator>
 #include <ostream>
-#include <sstream>
-#include <unistd.h>
-#include <type_traits>
 #include <ranges>
-
-#include "string.hpp"
+#include <sstream>
+#include <type_traits>
 
 namespace vb {
 
@@ -22,51 +22,57 @@ inline constexpr auto debug_enabled = true;
 inline constexpr auto debug_enabled = false;
 #endif
 
-
-template <typename TYPE>
+template<typename TYPE>
 concept is_debugable = requires(const TYPE& value, std::ostream& out) {
     { out << value } -> std::same_as<std::ostream&>;
 };
 
-struct no_debug {
+struct no_debug
+{
     void updatepid() {}
 
-    template <typename... ARGS>
-    void operator()(ARGS...) {}
+    template<typename... ARGS>
+    void operator()(ARGS...)
+    {
+    }
 
     void flush_to(std::ostream&) {}
 
-    template <typename... ARGS>
-    void log_to(std::ostream&, ARGS...) {}
+    template<typename... ARGS>
+    void log_to(std::ostream&, ARGS...)
+    {
+    }
 };
 
-struct debugger {
+struct debugger
+{
     std::string current;
-    int pid = ::getpid();
+    int         pid = ::getpid();
 
     void updatepid()
     {
-        if (pid == -1)
-        {
+        if (pid == -1) {
             pid = ::getpid();
         }
     }
 
-    template <typename FIRST, typename... ARGS>
-    void operator()(const FIRST& first, const ARGS&... args)
+    template<typename FIRST, typename... ARGS>
+    void operator()(const FIRST& first, const ARGS&...args)
     {
         updatepid();
         if constexpr (std::ranges::range<FIRST> && !is_string_type<FIRST>) {
             std::stringstream out{};
-            std::ranges::copy(first | std::views::filter([](const auto& value) {
-                if constexpr (std::is_pointer_v<std::remove_reference_t<decltype(value)>>) {
-                    return value != nullptr;
-                } else {
-                    return true;
-                }
-            }), std::ostream_iterator<std::ranges::range_value_t<FIRST>>(out, ", "));
+            std::ranges::copy(
+                first | std::views::filter([](const auto& value) {
+                    if constexpr (std::is_pointer_v<std::remove_reference_t<decltype(value)>>) {
+                        return value != nullptr;
+                    } else {
+                        return true;
+                    }
+                }),
+                std::ostream_iterator<std::ranges::range_value_t<FIRST>>(out, ", "));
             current.append(out.str());
-        } else if constexpr ( std::same_as<FIRST, char* const *>) {
+        } else if constexpr (std::same_as<FIRST, char *const *>) {
             auto p = first;
             while (p != nullptr && *p != nullptr) {
                 (*this)(" \'");
@@ -74,15 +80,17 @@ struct debugger {
                 (*this)("\' ");
                 p++;
             }
-        } else if constexpr (std::convertible_to<FIRST, const char*>) {
+        } else if constexpr (std::convertible_to<FIRST, const char *>) {
             if (auto ptr = first; ptr == nullptr) {
                 current.append("«nullptr»");
             } else {
                 current.append(first);
             }
         } else if constexpr (is_string_type<FIRST>) {
-            current.append(first); 
-        } else if constexpr (requires { {std::to_string(first)}; }) {
+            current.append(first);
+        } else if constexpr (requires {
+                                 { std::to_string(first) };
+                             }) {
             current.append(std::to_string(first));
         } else {
             current.append("«?»");
@@ -99,8 +107,8 @@ struct debugger {
         current = std::string();
     }
 
-    template <typename... ARGS>
-    void log_to(std::ostream& out, const ARGS&... args)
+    template<typename... ARGS>
+    void log_to(std::ostream& out, const ARGS&...args)
     {
         (*this)(args...);
         flush_to(out);

@@ -21,27 +21,25 @@ namespace vb::st {
 template<class UNEXPECTED_T>
 class unexpected
 {
-  public:
+public:
     // constructors
     template<class... Args>
         requires std::constructible_from<UNEXPECTED_T, Args...>
     constexpr explicit unexpected(std::in_place_t, Args&&...args)
-      : unex{ std::forward<Args>(args)... }
+        : unex{ std::forward<Args>(args)... }
     {
     }
 
     template<class U, class... Args>
-    constexpr explicit unexpected(std::in_place_t,
-                                  std::initializer_list<U> init,
-                                  Args&&...args)
-      : unex{ init, std::forward<Args>(args)... }
+    constexpr explicit unexpected(std::in_place_t, std::initializer_list<U> init, Args&&...args)
+        : unex{ init, std::forward<Args>(args)... }
     {
     }
 
     template<class Err = UNEXPECTED_T>
         requires std::constructible_from<UNEXPECTED_T, Err>
     constexpr explicit unexpected(Err&& error)
-      : unex{ error }
+        : unex{ error }
     {
     }
 
@@ -53,13 +51,9 @@ class unexpected
     }
 
     // swap
-    constexpr void swap(unexpected& other) noexcept
-    {
-        std::swap(unex, other.unex);
-    }
+    constexpr void swap(unexpected& other) noexcept { std::swap(unex, other.unex); }
 
-    friend constexpr void swap(unexpected& x,
-                               unexpected& y) noexcept(noexcept(x.swap(y)))
+    friend constexpr void swap(unexpected& x, unexpected& y) noexcept(noexcept(x.swap(y)))
     {
         std::swap(x.unex, y.unex);
     }
@@ -67,13 +61,12 @@ class unexpected
     // equality operator
     template<class E2>
         requires std::equality_comparable_with<UNEXPECTED_T, E2>
-    friend constexpr bool operator==(const unexpected& value,
-                                     const unexpected<E2>& value2)
+    friend constexpr bool operator==(const unexpected& value, const unexpected<E2>& value2)
     {
         return value.unex == value2.unex;
     }
 
-  private:
+private:
     UNEXPECTED_T unex; // exposition only
 };
 
@@ -91,16 +84,13 @@ class bad_expected_access : public bad_expected_access<void>
 {
     ERROR_T error_obj;
 
-  public:
+public:
     bad_expected_access(ERROR_T err)
-      : error_obj(std::move(err))
+        : error_obj(std::move(err))
     {
     }
 
-    const char *what() const noexcept override
-    {
-        return "Bad bad_expected_access";
-    }
+    const char *what() const noexcept override { return "Bad bad_expected_access"; }
 
     template<typename T>
     constexpr auto error(this T&& self) noexcept
@@ -121,9 +111,9 @@ inline constexpr unexpect_t unexpect{};
 template<class EXPECTED_T, class UNEXPECTED_T>
 class expected
 {
-  public:
-    using value_type = EXPECTED_T;
-    using error_type = UNEXPECTED_T;
+public:
+    using value_type      = EXPECTED_T;
+    using error_type      = UNEXPECTED_T;
     using unexpected_type = unexpected<UNEXPECTED_T>;
 
     template<class REBOUND_TYPE>
@@ -134,55 +124,49 @@ class expected
     template<typename EXPECTED_LIKE_T>
         requires std::convertible_to<EXPECTED_LIKE_T, value_type>
     expected(EXPECTED_LIKE_T value)
-      : data{ value }
+        : data{ value }
     {
     }
 
     template<class G>
         requires std::convertible_to<G, error_type>
     constexpr expected(const unexpected<G>& unexpected_obj)
-      : data{ unexpected_obj.error }
+        : data{ unexpected_obj.error }
     {
     }
 
     template<class G>
         requires std::convertible_to<G, error_type>
     constexpr expected(const unexpected<G>&& unexpected_obj)
-      : data{ std::move(unexpected_obj.error) }
+        : data{ std::move(unexpected_obj.error) }
     {
     }
 
     template<class... Args>
         requires std::constructible_from<value_type, Args...>
     constexpr explicit expected(std::in_place_t, Args&&...args)
-      : data{ value_type{ std::forward<Args>(args)... } }
+        : data{ value_type{ std::forward<Args>(args)... } }
     {
     }
 
     template<class U, class... Args>
-        requires std::
-          constructible_from<value_type, std::initializer_list<U>, Args...>
-      constexpr explicit expected(std::in_place_t,
-                                  std::initializer_list<U> init,
-                                  Args&&...args)
-      : data{ value_type{ init, std::forward<Args>(args)... } }
+        requires std::constructible_from<value_type, std::initializer_list<U>, Args...>
+    constexpr explicit expected(std::in_place_t, std::initializer_list<U> init, Args&&...args)
+        : data{ value_type{ init, std::forward<Args>(args)... } }
     {
     }
 
     template<class... Args>
         requires std::constructible_from<error_type, Args...>
     constexpr explicit expected(unexpect_t, Args&&...args)
-      : data{ error_type{ std::forward<Args>(args)... } }
+        : data{ error_type{ std::forward<Args>(args)... } }
     {
     }
 
     template<class U, class... Args>
-        requires std::
-          constructible_from<error_type, std::initializer_list<U>, Args...>
-      constexpr explicit expected(unexpect_t,
-                                  std::initializer_list<U> init,
-                                  Args&&...args)
-      : data{ error_type{ init, std::forward<Args>(args)... } }
+        requires std::constructible_from<error_type, std::initializer_list<U>, Args...>
+    constexpr explicit expected(unexpect_t, std::initializer_list<U> init, Args&&...args)
+        : data{ error_type{ init, std::forward<Args>(args)... } }
     {
     }
 
@@ -194,10 +178,8 @@ class expected
     }
 
     template<class U, class... Args>
-        requires std::
-          constructible_from<value_type, std::initializer_list<U>, Args...>
-      constexpr EXPECTED_T& emplace(std::initializer_list<U> init,
-                                    Args&&...args) noexcept
+        requires std::constructible_from<value_type, std::initializer_list<U>, Args...>
+    constexpr EXPECTED_T& emplace(std::initializer_list<U> init, Args&&...args) noexcept
     {
         data = error_type{ init, std::forward<Args>(args)... };
     }
@@ -235,10 +217,7 @@ class expected
         return &std::get<0>(std::forward<T>(self));
     }
 
-    constexpr bool has_value() const noexcept
-    {
-        return std::holds_alternative<0>(data);
-    }
+    constexpr bool has_value() const noexcept { return std::holds_alternative<0>(data); }
 
     constexpr explicit operator bool() const noexcept { return has_value(); }
 
@@ -308,11 +287,10 @@ class expected
 
     // equality operators
     template<class T2, class E2>
-        requires(!std::is_void_v<T2> &&
-                 std::equality_comparable_with<value_type, T2> &&
-                 std::equality_comparable_with<error_type, E2>)
-    friend constexpr bool operator==(const expected& x,
-                                     const expected<T2, E2>& y)
+        requires(
+            !std::is_void_v<T2> && std::equality_comparable_with<value_type, T2> &&
+            std::equality_comparable_with<error_type, E2>)
+    friend constexpr bool operator==(const expected& x, const expected<T2, E2>& y)
     {
         if (x.has_value() != y.has_value()) {
             return false;
@@ -336,8 +314,7 @@ class expected
 
     template<class E2>
         requires std::equality_comparable_with<error_type, E2>
-    friend constexpr bool operator==(const expected& self,
-                                     const unexpected<E2>& error)
+    friend constexpr bool operator==(const expected& self, const unexpected<E2>& error)
     {
         if (self.has_value()) {
             return false;
@@ -345,7 +322,7 @@ class expected
         return self.error() == error;
     }
 
-  private:
+private:
     std::variant<value_type, error_type> data;
 };
 

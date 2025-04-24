@@ -2,33 +2,35 @@
 #ifndef INCLUDED_FILEYSYSTEM_HPP
 #define INCLUDED_FILEYSYSTEM_HPP
 
-#include <filesystem>
-#include <print>
-
+#include "./string.hpp"
 #include <sys/errno.h>
 
-#include "./string.hpp"
+#include <filesystem>
+#include <print>
 
 namespace vb {
 
 // NOLINTNEXTLINE(unsued_namespace)
 namespace fs = std::filesystem;
-    
-struct base_filesystem_ops {
-    virtual ~base_filesystem_ops() = default;
-    virtual bool create_directories(fs::path) const = 0;
-    virtual std::error_code create_link(fs::path, fs::path) const = 0;
+
+struct base_filesystem_ops
+{
+    virtual ~base_filesystem_ops()                                   = default;
+    virtual bool            create_directories(fs::path) const       = 0;
+    virtual std::error_code create_link(fs::path, fs::path) const    = 0;
     virtual std::error_code create_symlink(fs::path, fs::path) const = 0;
-    virtual std::error_code copy(fs::path, fs::path) const = 0;
-    virtual std::error_code move(fs::path, fs::path) const = 0;
-    virtual std::error_code unlink(fs::path) const = 0;
+    virtual std::error_code copy(fs::path, fs::path) const           = 0;
+    virtual std::error_code move(fs::path, fs::path) const           = 0;
+    virtual std::error_code unlink(fs::path) const                   = 0;
 };
 
-template <typename PATH_LIKE>
-concept is_path_like = std::same_as<PATH_LIKE, fs::path> || is_string_type<PATH_LIKE>; 
+template<typename PATH_LIKE>
+concept is_path_like = std::same_as<PATH_LIKE, fs::path> || is_string_type<PATH_LIKE>;
 
-struct filesystem_mock_ops : base_filesystem_ops {
-    bool create_directories(fs::path path) const override {
+struct filesystem_mock_ops : base_filesystem_ops
+{
+    bool create_directories(fs::path path) const override
+    {
         std::println("Create directories {}", path.string());
         return true;
     }
@@ -39,72 +41,84 @@ struct filesystem_mock_ops : base_filesystem_ops {
         return std::error_code{};
     }
 
-    std::error_code create_symlink(fs::path source, fs::path target) const override {
+    std::error_code create_symlink(fs::path source, fs::path target) const override
+    {
         std::println("Create symlink {} -> {}", source.string(), target.string());
         return std::error_code{};
     }
 
-    std::error_code copy(fs::path source, fs::path target) const override {
+    std::error_code copy(fs::path source, fs::path target) const override
+    {
         std::println("Copy {} -> {}", source.string(), target.string());
         return std::error_code{};
     }
 
-    std::error_code move(fs::path source, fs::path target) const override {
+    std::error_code move(fs::path source, fs::path target) const override
+    {
         std::println("Move {} -> {}", source.string(), target.string());
         return std::error_code{};
     }
 
-    std::error_code unlink(fs::path file) const override {
+    std::error_code unlink(fs::path file) const override
+    {
         std::println("Remove {}", file.string());
         return std::error_code{};
     }
 };
 
-struct filesystem_ops : base_filesystem_ops {
-    bool create_directories(fs::path target) const override {
-        return fs::create_directories(target);
-    }
+struct filesystem_ops : base_filesystem_ops
+{
+    bool create_directories(fs::path target) const override { return fs::create_directories(target); }
 
-    std::error_code create_symlink(fs::path source, fs::path target) const override {
+    std::error_code create_symlink(fs::path source, fs::path target) const override
+    {
         std::error_code error;
         fs::create_symlink(source, target, error);
         return error;
     }
 
-    std::error_code create_link(fs::path source, fs::path target) const override {
+    std::error_code create_link(fs::path source, fs::path target) const override
+    {
         std::error_code error;
         fs::create_hard_link(source, target, error);
         return error;
     }
 
-    std::error_code copy(fs::path source, fs::path target) const override {
+    std::error_code copy(fs::path source, fs::path target) const override
+    {
         std::error_code error;
         fs::copy_file(source, target, error);
         return error;
     }
 
-    std::error_code move(fs::path source, fs::path target) const override {
+    std::error_code move(fs::path source, fs::path target) const override
+    {
         std::error_code error;
         fs::rename(source, target, error);
         return error;
     }
 
-    std::error_code unlink(fs::path file) const override {
+    std::error_code unlink(fs::path file) const override
+    {
         std::error_code error;
         fs::remove(file, error);
         return error;
     }
 };
 
-struct filesystem {
-    enum mode {
+struct filesystem
+{
+    enum mode
+    {
         MOCK,
-        EXEC};
+        EXEC
+    };
 
     static inline auto pimpl = std::variant<filesystem_mock_ops, filesystem_ops>{};
 
-    static void setMode(mode new_mode) {
-        switch(new_mode) {
+    static void setMode(mode new_mode)
+    {
+        switch (new_mode) {
         case MOCK:
             pimpl = filesystem_mock_ops{};
             break;
@@ -116,44 +130,32 @@ struct filesystem {
 
     static bool create_directories(fs::path source)
     {
-        return std::visit([&](auto& impl) {
-            return impl.create_directories(source);
-        }, pimpl);
+        return std::visit([&](auto& impl) { return impl.create_directories(source); }, pimpl);
     }
 
     static std::error_code create_link(fs::path source, fs::path target)
     {
-        return std::visit([&](auto& impl) {
-            return impl.create_link(source, target);
-        }, pimpl);
+        return std::visit([&](auto& impl) { return impl.create_link(source, target); }, pimpl);
     }
 
     static std::error_code create_symlink(fs::path source, fs::path target)
     {
-        return std::visit([&](auto& impl) {
-            return impl.create_symlink(source, target);
-        }, pimpl);
+        return std::visit([&](auto& impl) { return impl.create_symlink(source, target); }, pimpl);
     }
 
     static std::error_code copy(fs::path source, fs::path target)
     {
-        return std::visit([&](auto& impl) {
-            return impl.copy(source, target);
-        }, pimpl);
+        return std::visit([&](auto& impl) { return impl.copy(source, target); }, pimpl);
     }
 
     static std::error_code move(fs::path source, fs::path target)
     {
-        return std::visit([&](auto& impl) {
-            return impl.move(source, target);
-        }, pimpl);
+        return std::visit([&](auto& impl) { return impl.move(source, target); }, pimpl);
     }
 
     static std::error_code unlink(fs::path file)
     {
-        return std::visit([&](auto& impl) {
-            return impl.unlink(file);
-        }, pimpl);
+        return std::visit([&](auto& impl) { return impl.unlink(file); }, pimpl);
     }
 };
 

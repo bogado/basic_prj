@@ -2,61 +2,58 @@
 #define INCLUDED_GENERATOR_HPP
 
 #include <coroutine>
+#include <cstdint>
+#include <exception>
 #include <iterator>
 #include <optional>
-#include <exception>
-#include <cstdint>
 
 namespace vb {
 
-template <typename VALUE_TYPE, typename REFERENCE_TYPE = const VALUE_TYPE&>
-struct generator {
+template<typename VALUE_TYPE, typename REFERENCE_TYPE = const VALUE_TYPE&>
+struct generator
+{
     using value_type = VALUE_TYPE;
-    using reference =  REFERENCE_TYPE;
+    using reference  = REFERENCE_TYPE;
 
     struct promise_type;
     using handle_type = std::coroutine_handle<promise_type>;
 
     handle_type handle;
-    value_type current;
+    value_type  current;
 
-    generator(handle_type handle_) :
-        handle{handle_},
-        current{}
-    {}
+    generator(handle_type handle_)
+        : handle{ handle_ }
+        , current{}
+    {
+    }
 
-    struct promise_type {
-        std::exception_ptr exception{};
-        bool done = false;
+    struct promise_type
+    {
+        std::exception_ptr        exception{};
+        bool                      done = false;
         std::optional<value_type> current{};
 
-        generator get_return_object() noexcept
+        generator get_return_object() noexcept { return generator{ handle_type::from_promise(*this) }; }
+
+        std::suspend_always initial_suspend() noexcept { return {}; }
+        std::suspend_always final_suspend() noexcept
         {
-            return generator{handle_type::from_promise(*this)};
+            done = true;
+            return {};
         }
 
-        std::suspend_always  initial_suspend() noexcept { return {}; }
-        std::suspend_always    final_suspend() noexcept { done = true; return {}; }
-
-        template <std::convertible_to<reference> YIELDED_TYPE>
-        std::suspend_always yield_value(YIELDED_TYPE && yielded) noexcept
+        template<std::convertible_to<reference> YIELDED_TYPE>
+        std::suspend_always yield_value(YIELDED_TYPE&& yielded) noexcept
         {
             current = std::forward<YIELDED_TYPE>(yielded);
             return {};
         }
 
-        void unhandled_exception() 
-        {
-            exception = std::current_exception();
-        }
+        void unhandled_exception() { exception = std::current_exception(); }
     };
 
 private:
- 
-    auto promise()
-    {
-        return handle.promise();
-    }
+    auto promise() { return handle.promise(); }
 
     bool resume()
     {
@@ -79,54 +76,50 @@ private:
         }
         return promise().current.value();
     }
-public:
 
-    explicit operator bool()
-    {
-        return !handle.done();
-    }
+public:
+    explicit operator bool() { return !handle.done(); }
 
     using sentinel = std::default_sentinel_t;
-    struct iterator {
-        using value_type = generator::value_type;
+    struct iterator
+    {
+        using value_type      = generator::value_type;
         using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
+        using size_type       = std::size_t;
 
         mutable generator *self = nullptr;
 
-        iterator(generator* s) :
-            self{s}
-        {}
-
-        reference operator*() const {
-            return self->current;
+        iterator(generator *s)
+            : self{ s }
+        {
         }
 
-        iterator operator++(int) {
-            auto other = *this;
+        reference operator*() const { return self->current; }
+
+        iterator operator++(int)
+        {
+            auto other    = *this;
             self->current = self->next();
             return other;
         }
 
-        iterator& operator++() {
+        iterator& operator++()
+        {
             self->current = self->next();
             return *this;
         }
 
-        bool operator==(const std::default_sentinel_t&) const {
-            return self == nullptr || !(*self);
-        }
+        bool operator==(const std::default_sentinel_t&) const { return self == nullptr || !(*self); }
     };
 
-    iterator begin() {
-        auto result = iterator{this};
+    iterator begin()
+    {
+        auto result = iterator{ this };
         ++result;
         return result;
     }
 
-    auto end() {
-        return std::default_sentinel;
-    }
+    auto end() { return std::default_sentinel; }
 };
 
 }

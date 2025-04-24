@@ -1,12 +1,12 @@
 // buffer.cpp                                                                        -*-C++-*-
 
-#include <array>
+#include "util/buffer.hpp"
+
+#include "test_data/line_data.hpp"
 #include <catch2/catch_all.hpp>
 
-#include "util/buffer.hpp"
-#include "test_data/line_data.hpp"
-
 #include <algorithm>
+#include <array>
 #include <iterator>
 
 TEST_CASE("Buffer", "[buffer][generator]")

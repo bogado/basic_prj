@@ -3,16 +3,16 @@
 #define INCLUDED_BUFFER_HPP
 
 #include <concepts>
-#include <string>
+#include <iostream>
 #include <iterator>
 #include <ranges>
-#include <iostream>
+#include <string>
 
 namespace vb {
 
-constexpr inline auto KB = std::size_t{1024};
-constexpr inline auto MB = KB*KB;
-constexpr inline auto GB = MB*KB;
+constexpr inline auto KB = std::size_t{ 1024 };
+constexpr inline auto MB = KB * KB;
+constexpr inline auto GB = MB * KB;
 
 namespace sys {
 #ifdef PAGE_SIZE
@@ -22,39 +22,34 @@ namespace sys {
 static constexpr auto PAGE_SIZE = 4 * KB;
 }
 
-template <typename SYS_READ_FN, typename... EXTRA_ARGS>
-concept system_read_fn = std::invocable<SYS_READ_FN, EXTRA_ARGS..., char *, std::size_t> 
-    && std::convertible_to<std::invoke_result_t<SYS_READ_FN, EXTRA_ARGS..., char *, std::size_t>, std::size_t>;
+template<typename SYS_READ_FN, typename... EXTRA_ARGS>
+concept system_read_fn =
+    std::invocable<SYS_READ_FN, EXTRA_ARGS..., char *, std::size_t> &&
+    std::convertible_to<std::invoke_result_t<SYS_READ_FN, EXTRA_ARGS..., char *, std::size_t>, std::size_t>;
 
-template <std::size_t BUFFER_SIZE = sys::PAGE_SIZE>
-struct buffer_type {
-    using storage_type = std::array<char, BUFFER_SIZE>;
+template<std::size_t BUFFER_SIZE = sys::PAGE_SIZE>
+struct buffer_type
+{
+    using storage_type   = std::array<char, BUFFER_SIZE>;
     using const_iterator = storage_type::const_iterator;
-    using iterator = storage_type::iterator;
+    using iterator       = storage_type::iterator;
+
 private:
     storage_type data{};
-    iterator used_begin = data.begin();
-    iterator used_end   = data.begin();
+    iterator     used_begin = data.begin();
+    iterator     used_end   = data.begin();
 
-    inline constexpr bool valid_equal(iterator what, char value) {
-        return what != used_end && *what == value;
-    }
+    inline constexpr bool valid_equal(iterator what, char value) { return what != used_end && *what == value; }
+
 public:
-    bool has_data() const {
-        return used_begin != used_end;
-    }
+    bool has_data() const { return used_begin != used_end; }
 
-    std::size_t free() const {
-        return static_cast<std::size_t>(std::distance(const_iterator{used_end}, data.end()));
-    }
+    std::size_t free() const { return static_cast<std::size_t>(std::distance(const_iterator{ used_end }, data.end())); }
 
-    std::size_t loaded() const {
-        return static_cast<std::size_t>(std::distance(used_begin, used_end));
-    }
+    std::size_t loaded() const { return static_cast<std::size_t>(std::distance(used_begin, used_end)); }
 
-    template <typename... ARGS, std::invocable<ARGS..., char*, std::size_t> FUNC_T, std::ptrdiff_t FAILURE = -1>
-    auto load(FUNC_T reader_fn, ARGS... args)
-    -> ptrdiff_t
+    template<typename... ARGS, std::invocable<ARGS..., char *, std::size_t> FUNC_T, std::ptrdiff_t FAILURE = -1>
+    auto load(FUNC_T reader_fn, ARGS... args) -> ptrdiff_t
     {
         auto read = reader_fn(args..., &*used_end, free());
         if (read == FAILURE) {
@@ -71,7 +66,7 @@ public:
         }
 
         auto consume_end = std::ranges::find(used_begin, used_end, '\n');
-        auto result = std::string(used_begin, consume_end);
+        auto result      = std::string(used_begin, consume_end);
 
         if (valid_equal(consume_end, '\n')) {
             result.append(1, '\n');
@@ -90,8 +85,10 @@ public:
         return result;
     }
 
-    friend std::ostream& operator<<(std::ostream& out, const buffer_type& self) {
-        auto buffer_rep = std::ranges::subrange(self.used_begin, self.used_end) | std::views::transform([](auto ch) { return ch == '\n' ? '.':ch;});
+    friend std::ostream& operator<<(std::ostream& out, const buffer_type& self)
+    {
+        auto buffer_rep = std::ranges::subrange(self.used_begin, self.used_end) |
+                          std::views::transform([](auto ch) { return ch == '\n' ? '.' : ch; });
         return out << "Buffer«" << std::string(std::begin(buffer_rep), std::end(buffer_rep)) << "»";
     }
 };

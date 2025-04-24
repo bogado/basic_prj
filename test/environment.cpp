@@ -1,10 +1,10 @@
+#include "util/environment.hpp"
+
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_contains.hpp>
 #include <catch2/matchers/catch_matchers_vector.hpp>
-
-#include "util/environment.hpp"
 
 namespace vb::testing {
 
@@ -20,7 +20,7 @@ TEST_CASE("variable_name", "[variable_name]")
 TEST_CASE("variable", "[variable]")
 {
     using namespace vb::literals;
-    env::variable test{"test"};
+    env::variable test{ "test" };
     REQUIRE(test.name() == "test"_env);
     REQUIRE(test.value<std::string>() == ""sv);
     REQUIRE(test.value_str() == ""sv);
@@ -53,7 +53,7 @@ TEST_CASE("environment_test", "[environment]")
 TEST_CASE("enviroment_defintions", "[environment,definition]")
 {
     env::environment env_test{};
-    auto env = env_test.getEnv();
+    auto             env = env_test.getEnv();
 
     REQUIRE(env.empty());
 
