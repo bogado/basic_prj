@@ -1,19 +1,20 @@
 #ifndef INCLUDED_OPTIONS_HPP
 #define INCLUDED_OPTIONS_HPP
 
-#include "util/converters.hpp"
-#include "util/optional.hpp"
-#include "util/string.hpp"
+#include "./option/description.hpp"
+#include "./converters.hpp"
+#include "./string.hpp"
 
-#include <algorithm>
 #include <concepts>
-#include <functional>
+#include <cstddef>
 #include <optional>
 #include <ranges>
 #include <string_view>
+#include <tuple>
 #include <utility>
 
 namespace vb::opt {
+using namespace std::literals;
 
 template<typename ARGUMENT>
 concept is_argument = is_string<ARGUMENT>;
@@ -21,176 +22,49 @@ concept is_argument = is_string<ARGUMENT>;
 template<typename ARGUMENT_LIST>
 concept is_argument_list = std::ranges::range<ARGUMENT_LIST> && is_argument<typename ARGUMENT_LIST::value_type>;
 
-template<typename OPTION_DESCRIPTION>
-concept is_option_description =
-    std::equality_comparable_with<OPTION_DESCRIPTION, std::string_view> &&
-    std::equality_comparable_with<OPTION_DESCRIPTION, char> && requires(const OPTION_DESCRIPTION value) {
-        { value.key() } -> is_string;
-        { value.shortkey() } -> std::same_as<char>;
-        { value.description() } -> is_string;
-    };
-
-template<typename TYPE>
-concept is_optional_description = is_optional<TYPE> && is_option_description<typename TYPE::value_type>;
-
 template<typename OPTION_GROUP>
-concept is_option_group =
-    std::ranges::range<typename OPTION_GROUP::value_type> && is_option_description<typename OPTION_GROUP::value_type> &&
-    requires(const OPTION_GROUP group) {
-        { OPTION_GROUP::size } -> std::integral;
-        { group.name() } -> is_string;
-        { group.description() } -> is_string;
-        { group.template get<0>() } -> is_option_description;
-        { group.get("--option") } -> is_optional_description;
-    };
+concept is_group = std::integral<decltype(OPTION_GROUP::size)> && requires(const OPTION_GROUP group) {
+    { group.name() } -> is_string;
+    { group.description() } -> is_string;
+    { group.template get<0>() } -> is_description;
+    { group.locate("option"sv) };
+    { group.locate('a') };
+    { group["--option"sv] };
+    { group.parse(std::span<std::string_view>{}) } -> std::same_as<typename OPTION_GROUP::result_type>;
+};
 
 template<typename OPTION_T>
-concept is_option = is_option_description<OPTION_T> && requires(const OPTION_T value) {
+concept is_valued = is_description<OPTION_T> && requires(const OPTION_T value) {
     typename OPTION_T::value_type;
-    { OPTION_T::parse("--option=value") } -> std::same_as<std::optional<typename OPTION_T::value_type>>;
+    { (OPTION_T::has_default) } -> std::convertible_to<bool>;
+    { value.parse("--option=value") } -> std::same_as<std::optional<typename OPTION_T::value_type>>;
 };
 
-template<typename PREFIX_T>
-concept is_prefix_type = is_string<PREFIX_T> || std::same_as<PREFIX_T, char>;
-
-template<std::size_t SIZE, char SHORT_PREFIX = '-', static_string KEY_PREFIX = "--", char DESCRIPTION_SEPARATOR = ':'>
-struct basic_description
-{
-    struct prefix
-    {
-        static constexpr auto short_key   = SHORT_PREFIX;
-        static constexpr auto key         = KEY_PREFIX;
-        static constexpr auto description = DESCRIPTION_SEPARATOR;
-
-        constexpr static auto is_word_char(char c)
-        {
-            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == '_');
-        }
-
-        template<is_prefix_type PREFIX_T>
-        constexpr static auto length(PREFIX_T prefix)
-        {
-            if constexpr (std::same_as<PREFIX_T, char>) {
-                return 1uz;
-            } else if constexpr (is_string<PREFIX_T>) {
-                return std::size(prefix);
-            } else {
-                return sizeof(prefix);
-            }
-        }
-
-        constexpr static auto find_pos(std::string_view from, char prefix [[maybe_unused]])
-        {
-            return from.substr(from.find(prefix), 1);
-        }
-
-        constexpr static auto find_pos(std::string_view from, std::string_view prefix [[maybe_unused]])
-        {
-            auto found = std::ranges::search(from, prefix);
-            return std::string_view(std::begin(found), std::end(found));
-        }
-
-        constexpr static auto find_after(std::string_view from, auto prefix)
-        {
-            auto found = find_pos(from, prefix);
-            if (found.empty() || std::end(found) == std::end(from)) {
-                return std::string_view{};
-            }
-            return std::string_view(
-                std::end(found), std::ranges::find_if_not(std::next(std::end(found)), std::end(from), is_word_char));
-        }
-    };
-
-    using position_type = std::size_t;
-
-    static_string<SIZE> data;
-
-    constexpr basic_description(static_string<SIZE> dta)
-        : data{ dta }
-    {
-    }
-
-    constexpr auto key() const { return prefix::find_after(data, prefix::key); }
-
-    constexpr auto shortkey() const
-    {
-        auto key = prefix::find_after(data, prefix::short_key);
-        return key.empty() ? '\0' : key[0];
-    }
-
-    constexpr auto description() const { return; }
-
-    constexpr bool operator==(const is_string auto& k) const
-    {
-        auto view = to_string_view(k);
-        return view.starts_with(prefix::key) && key() == view.substr(std::size(prefix::key));
-    }
-
-    constexpr bool operator==(char abv) { return shortkey() == abv; }
-
-    template<typename T>
-        requires(is_string<T> || std::same_as<T, char>)
-    constexpr friend bool operator==(const T& a, const basic_description& b)
-    {
-        return b == a;
-    }
-
-    template<typename T>
-        requires(is_string<T> || std::same_as<T, char>)
-    constexpr friend bool operator!=(const T& a, const basic_description& b)
-    {
-        return !(b == a);
-    }
-
-    template<typename T>
-        requires(is_string<T> || std::same_as<T, char>)
-    constexpr bool operator!=(const T& a)
-    {
-        return !(*this == a);
-    }
-};
-
-template<static_string OPT>
-constexpr auto
-operator""_opt()
-{
-    return basic_description<decltype(OPT)::length>{ OPT };
-}
-
-namespace test {
-constexpr auto test_opt = "-t, --test : this is a test"_opt;
-static_assert(test_opt.shortkey() == 't');
-static_assert(test_opt.key() == "test");
-} // namespace test
+static_assert(is_description<basic_description>);
 
 template<std::constructible_from<> VALUE_T>
-auto
-default_builder() -> VALUE_T
+auto default_builder() -> VALUE_T
 {
     return {};
 }
 
-template<typename VALUE_T, is_option_description OPTION_DESCRIPTION_T>
-struct basic_option : OPTION_DESCRIPTION_T
+template<typename VALUE_T>
+struct basic_option : basic_description
 {
-    using value_type              = VALUE_T;
-    using option_description_type = OPTION_DESCRIPTION_T;
+    using value_type = VALUE_T;
+
+    static constexpr auto has_default = false;
 
     template<typename... ARG_Ts>
-        requires(std::constructible_from<option_description_type, ARG_Ts...>)
-    constexpr basic_option(ARG_Ts&&...args) noexcept
-        : option_description_type{ std::forward<ARG_Ts>(args)... }
+        requires(std::constructible_from<basic_description, ARG_Ts...>)
+    explicit constexpr basic_option(ARG_Ts&&...args) noexcept
+        : basic_description{ std::forward<ARG_Ts>(args)... }
     {
     }
 
-    using option_description_type::description;
-    using option_description_type::key;
-    using option_description_type::shortkey;
+    bool is_updated = false;
 
-    std::reference_wrapper<value_type> storage;
-    bool                               updated = false;
-
-    constexpr auto parse(std::string_view str)
+    constexpr static auto parse(std::string_view str) -> std::optional<value_type>
     {
         if constexpr (parseable<value_type>) {
             return from_string<value_type>(str);
@@ -198,54 +72,159 @@ struct basic_option : OPTION_DESCRIPTION_T
     }
 };
 
-template<is_option_description OPTION, std::integral auto SIZE>
+template<typename VALUE_T>
+struct default_option : basic_option<VALUE_T>
+{
+    using value_type = basic_option<VALUE_T>::value_type;
+    value_type default_value;
+
+    static constexpr auto has_default = true;
+
+    template<typename... ARG_Ts>
+        requires(std::constructible_from<basic_description, ARG_Ts...>)
+    explicit constexpr basic_option(ARG_Ts&&...args) noexcept
+        : basic_description{ std::forward<ARG_Ts>(args)... }
+    {
+    }
+
+    bool is_updated = false;
+
+    constexpr static auto parse(std::string_view str) -> std::optional<value_type>
+    {
+        if constexpr (parseable<value_type>) {
+            return from_string<value_type>(str);
+        }
+    }
+};
+namespace test {
+constexpr auto opt = basic_option<int>("--opt, -o: option <int>");
+
+static_assert(is_valued<basic_option<int>>);
+
+};
+
+template<is_valued... OPTION_Ts>
 class option_group
 {
 public:
-    using value_t        = OPTION;
-    using size_type      = decltype(SIZE);
-    using storage_type   = std::array<OPTION, SIZE>;
-    using iterator       = typename storage_type::iterator;
-    using const_iterator = typename storage_type::const_iterator;
+    using storage_type = std::tuple<OPTION_Ts...>;
+    using option_type  = std::optional<basic_description>;
+    using result_type  = std::tuple<typename OPTION_Ts::value_type...>;
+
+    constexpr static auto size = sizeof...(OPTION_Ts);
 
 private:
     static constexpr auto SEPARATOR = ':';
 
-    using string_store = std::optional<std::string>;
+    static constexpr auto indexes = std::make_index_sequence<size>();
 
-    storage_type     storage;
+    storage_type     my_options;
     std::string_view my_name;
     std::string_view my_description;
 
-    static constexpr std::string_view name_from(const std::string_view def)
+    template<bool IS_NAME>
+    static constexpr std::string_view find_part(const std::string_view def)
     {
-        return def.substr(0, def.find(SEPARATOR));
-    }
-
-    static constexpr std::string_view description_from(const std::string_view def)
-    {
-        return def.substr(def.find(SEPARATOR) + 1);
+        auto loc = def.find(SEPARATOR);
+        if (loc == def.npos) {
+            return std::string_view{};
+        }
+        if constexpr (IS_NAME) {
+            return def.substr(0, def.find(SEPARATOR));
+        } else {
+            return def.substr(def.find(SEPARATOR) + 1);
+        }
     }
 
 public:
-    consteval option_group(
-        const char (&def)[SIZE], // NOLINT[cppcoreguidelines-avoid-c-arrays]
-        std::same_as<OPTION> auto&&...options)
-        requires(SIZE > 0)
-        : storage{ options... }
-        , my_name{ name_from(def) }
-        , my_description{ description_from(def) }
+    template<std::size_t DEF_SIZE>
+    explicit consteval option_group(
+        const char (&def)[DEF_SIZE], // NOLINT[cppcoreguidelines-avoid-c-arrays]
+        OPTION_Ts&&...options)
+        : my_options{ options... }
+        , my_name{ find_part<true>(def) }
+        , my_description{ find_part<false>(def) }
     {
+    }
+
+    template<typename Self>
+    auto begin(this Self&& self)
+    {
+        return std::forward<Self>(self).my_options.begin();
+    }
+
+    template<typename Self>
+    auto end(this Self&& self)
+    {
+        return std::forward<Self>(self).my_options.end();
+    }
+
+    constexpr auto name() const { return my_name; }
+
+    constexpr auto description() const { return my_description; }
+
+    template<std::size_t POS>
+    constexpr auto get() const
+    {
+        return std::get<POS>(my_options);
+    }
+
+    constexpr auto locate() const {}
+
+private:
+    template<bool SELF, typename OTHER>
+    static bool compare(const is_description auto& description, const OTHER& other)
+    {
+        if constexpr (SELF) {
+            return description == other;
+        } else if constexpr (std::same_as<OTHER, char>) {
+            return description.shortkey() == other;
+        } else {
+            return description.key() == as_string_view(other);
+        }
+    }
+
+    template<is_string_part T, std::size_t POS, bool SELF>
+    constexpr auto getter(const T& value) const -> option_type
+    {
+        if constexpr (POS >= size) {
+            return option_type{};
+        } else {
+            if (const auto& current = get<POS>(); compare<SELF>(current, value)) {
+                return option_type{ current };
+            } else {
+                return getter<T, POS + 1, SELF>(value);
+            }
+        }
+    }
+
+public:
+    template<typename T>
+        requires(std::same_as<T, std::string_view> || std::same_as<T, char>)
+    constexpr auto operator[](T value) const
+    {
+        return getter<T, 0, true>(value);
+    }
+
+    template<typename T, std::size_t POS = 0>
+        requires(std::same_as<T, std::string_view> || std::same_as<T, char>)
+    constexpr auto locate(T value) const -> option_type
+    {
+        return getter<T, 0, false>(value);
+    }
+
+    constexpr auto parse(is_argument_list auto args) {
+        result_type result;
+        for 
     }
 };
 
-static_assert(is_option_group < option_group<basic_opt, 4>);
+static_assert(is_group<option_group<basic_option<int>, basic_option<std::string_view>>>);
 
-template<typename VALUE_T, is_option_description DESCRIPTION_TYPE>
-constexpr auto
-opt(DESCRIPTION_TYPE&& description)
+template<typename VALUE_T, is_description DESCRIPTION_TYPE>
+constexpr auto opt(DESCRIPTION_TYPE&& description)
 {
-    return basic_option<VALUE_T, DESCRIPTION_TYPE>(description);
+    return basic_option<VALUE_T>(std::forward<DESCRIPTION_TYPE>(description));
 }
 
 } // namespace vb::opt

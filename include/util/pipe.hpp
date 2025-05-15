@@ -297,7 +297,7 @@ public:
     {
         auto result = std::string();
 
-        while (result.size() == 0 && result.back() != '\n') {
+        while(result.size() == 0 || result.back() != '\n') {
             if (!buffer.has_data() && can_be_read()) {
                 buffer_load();
             } else if (!buffer.has_data()) {

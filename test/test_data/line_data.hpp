@@ -16,10 +16,3 @@ constexpr auto lines = std::array{ "1111\n"sv, "2222\n"sv, "3333\n"sv, "4444\n"s
 }
 
 #endif
-// --------------------------------------------------------------
-// NOTICE:
-// Copyright 2023 Bloomberg Finance L.P. All rights reserved.
-// Property of Bloomberg Finance L.P. (BFLP)
-// This software is made available solely pursuant to the
-// terms of a BFLP license agreement which governs its use
-// ----------------------- END-OF-FILE --------------------------

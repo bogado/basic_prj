@@ -1,7 +1,7 @@
 #ifndef CONVERTERS_HPP_INCLUDED
 #define CONVERTERS_HPP_INCLUDED
 
-#include <util/string.hpp>
+#include "./string.hpp"
 
 #include <concepts>
 #include <iostream>
@@ -23,8 +23,7 @@ concept can_be_outstreamed = requires(std::ostream& out, VALUE_T val) {
 };
 
 template<can_be_outstreamed VALUE_T>
-auto
-to_string(const VALUE_T& value) -> std::string
+auto to_string(const VALUE_T& value) -> std::string
 {
     if constexpr (std::convertible_to<std::string, VALUE_T>) {
         return static_cast<std::string>(value);
@@ -37,8 +36,7 @@ to_string(const VALUE_T& value) -> std::string
 }
 
 template<can_be_istreamed PARSEABLE>
-constexpr auto
-from_string(std::string_view source) -> PARSEABLE
+constexpr auto from_string(std::string_view source) -> PARSEABLE
 {
     if constexpr (std::same_as<std::string_view, PARSEABLE> || std::same_as<std::string, PARSEABLE>) {
         return PARSEABLE{ source };
@@ -50,8 +48,7 @@ from_string(std::string_view source) -> PARSEABLE
 }
 
 template<can_be_istreamed PARSEABLE>
-constexpr auto
-from_string(is_string auto source)
+constexpr auto from_string(is_string auto source)
 {
     return from_string<PARSEABLE>(as_string_view(source));
 }
