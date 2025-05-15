@@ -106,11 +106,18 @@ public:
     template<parseable RESULT_T>
     constexpr RESULT_T value_or(const RESULT_T& default_value) const noexcept
     {
-        auto var = to_string();
-        if (auto value = ::getenv(var.c_str()); value != nullptr) {
-            return vb::from_string<RESULT_T>(value);
+        auto opt_value = value_str();
+        if (!opt_value.has_value()) {
+            return {};
+        }
+        if constexpr (std::same_as<TYPE, std::string>) {
+            return opt_value;
         } else {
-            return default_value;
+            if (opt_value.has_value()) {
+                return { from_string<TYPE>(opt_value.value()) };
+            } else {
+                return {};
+            }
         }
     }
 

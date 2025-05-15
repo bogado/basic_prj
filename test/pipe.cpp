@@ -79,13 +79,15 @@ TEST_CASE("pipe redirection", "[pipe][generator][buffer]")
     pipe_test.redirect_err();
 
     std::cerr << "Test\n";
-    REQUIRE(pipe_test() == std::string("Test\n"));
+    auto read = pipe_test();
+    REQUIRE(read.has_value());
+    REQUIRE(*read == std::string("Test\n"));
     REQUIRE_FALSE(pipe_test.has_data());
 
     std::cerr << "1 2 3\n4 5 6\n";
-    REQUIRE(pipe_test() == std::string("1 2 3\n"));
+    REQUIRE(*pipe_test() == std::string("1 2 3\n"));
     REQUIRE(pipe_test.has_data());
-    REQUIRE(pipe_test() == std::string("4 5 6\n"));
+    REQUIRE(*pipe_test() == std::string("4 5 6\n"));
     REQUIRE_FALSE(pipe_test.has_data());
 }
 
@@ -100,16 +102,16 @@ TEST_CASE("pipe writing and reading", "[pipe][generator][buffer]")
         pipe_test("Test");
         REQUIRE(pipe_test.has_data());
 
-        REQUIRE(pipe_test() == std::string("Test\n"));
+        REQUIRE(*pipe_test() == std::string("Test\n"));
         REQUIRE_FALSE(pipe_test.has_data());
     }
 
     SECTION("Write two lines and read them")
     {
         pipe_test("1 2 3\n4 5 6");
-        REQUIRE(pipe_test() == std::string("1 2 3\n"));
+        REQUIRE(*pipe_test() == std::string("1 2 3\n"));
         REQUIRE(pipe_test.has_data());
-        REQUIRE(pipe_test() == std::string("4 5 6\n"));
+        REQUIRE(*pipe_test() == std::string("4 5 6\n"));
         REQUIRE_FALSE(pipe_test.has_data());
     }
 }
@@ -133,7 +135,7 @@ TEST_CASE("Read loop", "[pipe][buffer][generator]")
         } else {
             prev_ex = *expected_it;
             REQUIRE(expected_it != std::end(data::lines));
-            REQUIRE(pipe_test() == prev_ex);
+            REQUIRE(*pipe_test() == prev_ex);
             expected_it++;
         }
     }

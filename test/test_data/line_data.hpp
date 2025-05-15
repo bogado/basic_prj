@@ -1,5 +1,3 @@
-// line_data.hpp                                                                        -*-C++-*-
-
 #ifndef INCLUDED_LINE_DATA_HPP
 #define INCLUDED_LINE_DATA_HPP
 
