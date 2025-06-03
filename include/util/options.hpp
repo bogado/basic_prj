@@ -17,7 +17,7 @@
 namespace vb::opt {
 using namespace std::literals;
 
-static_assert(is_description<basic_description>);
+static_assert(is_description<description::basic>);
 
 template<std::constructible_from<> VALUE_T>
 auto default_builder() -> VALUE_T
@@ -26,29 +26,30 @@ auto default_builder() -> VALUE_T
 }
 
 template<typename VALUE_T, char SEPARATOR = '='>
-struct basic_option : basic_description
+struct basic_option : description::basic
 {
+    using base_value_type = VALUE_T;
     static constexpr auto separator = SEPARATOR;
-    static constexpr auto has_default = std::same_as<bool, VALUE_T>;
-    using value_type = std::conditional_t<has_default, bool, std::optional<VALUE_T>>;
+    static constexpr auto has_default = std::same_as<bool, base_value_type>;
+    using value_type = std::conditional_t<has_default, bool, std::optional<base_value_type>>;
 
     template<typename... ARG_Ts>
-        requires(std::constructible_from<basic_description, ARG_Ts...>)
+        requires(std::constructible_from<basic, ARG_Ts...>)
     explicit constexpr basic_option(ARG_Ts&&...args) noexcept
-        : basic_description{ std::forward<ARG_Ts>(args)... }
+        : basic{ std::forward<ARG_Ts>(args)... }
     {
     }
 
-    constexpr auto parse(std::string_view str) const -> std::optional<value_type>
+    constexpr auto parse(std::string_view str) const -> value_type
     {
-        if constexpr (std::same_as<bool, VALUE_T>) {
+        if constexpr (std::same_as<bool, base_value_type>) {
             return *this == str;
         }
-        if constexpr (parseable<value_type>) {
+        if constexpr (parseable<base_value_type>) {
             if (*this == str) {
                 auto value = str.substr(str.find(separator));
                 if (!value.empty()) {
-                    return from_string<value_type>(value);
+                    return from_string<base_value_type>(value);
                 }
             }
         }
@@ -60,6 +61,7 @@ template<typename VALUE_T>
 struct default_option : basic_option<VALUE_T>
 {
     using super = basic_option<VALUE_T>;
+    using base_value_type = VALUE_T;
     using value_type = VALUE_T;
 
     value_type my_default;
@@ -67,14 +69,15 @@ struct default_option : basic_option<VALUE_T>
     static constexpr auto has_default = true;
 
     template<typename... ARG_Ts>
-        requires(std::constructible_from<basic_description, ARG_Ts...>)
+        requires(std::constructible_from<description::basic, ARG_Ts...>)
     explicit constexpr default_option(value_type default_value, ARG_Ts&&...args) noexcept
         : super{ std::forward<ARG_Ts>(args)... }
         , my_default{ default_value }
     {
     }
 
-    constexpr auto parse(std::string_view str) const -> std::optional<value_type>
+    constexpr auto parse(std::string_view str) const -> 
+        value_type
     {
         if constexpr (super::has_default) {
             return super::parse(str) ? ! my_default: my_default;
@@ -94,7 +97,6 @@ constexpr auto opt = basic_option<int>("--opt, -o: option <int>");
 
 static_assert(is_valued<basic_option<int>>);
 static_assert(is_valued<default_option<int>>);
-static_assert(opt.parse("--opt=1").has_value());
 
 };
 

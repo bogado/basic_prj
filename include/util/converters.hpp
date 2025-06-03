@@ -36,7 +36,7 @@ auto to_string(const VALUE_T& value) -> std::string
 }
 
 template<can_be_istreamed PARSEABLE>
-constexpr auto from_string(std::string_view source) -> PARSEABLE
+auto from_string(std::string_view source) -> PARSEABLE
 {
     if constexpr (std::same_as<std::string_view, PARSEABLE> || std::same_as<std::string, PARSEABLE>) {
         return PARSEABLE{ source };
@@ -55,7 +55,7 @@ constexpr auto from_string(is_string auto source)
 
 template<typename PARSEABLE>
 concept parseable = requires(const std::string_view str) {
-    { from_string<PARSEABLE>(str) } -> std::same_as<PARSEABLE>;
+    { vb::from_string<PARSEABLE>(str) } -> std::same_as<PARSEABLE>;
 };
 
 template<typename STRINGABLE>

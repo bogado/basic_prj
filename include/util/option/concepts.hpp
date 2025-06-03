@@ -33,7 +33,7 @@ template<typename OPTION_T>
 concept is_valued = is_description<OPTION_T> && requires(const OPTION_T value) {
     typename OPTION_T::value_type;
     { (OPTION_T::has_default) } -> std::convertible_to<bool>;
-    { value.parse("--option=value") } -> std::same_as<std::optional<typename OPTION_T::value_type>>;
+    { value.parse("--option=value") } -> std::same_as<typename OPTION_T::value_type>;
 };
 
 template<typename PART>
