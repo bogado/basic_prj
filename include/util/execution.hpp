@@ -167,18 +167,19 @@ private:
 
     auto make_args(fs::path exec, std::ranges::sized_range auto arguments)
     {
-        auto result = std::pair{ std::vector<std::string>{ 1, exec.string() }, std::vector<const char *>{} };
+        auto result = std::pair{std::vector<std::string>{}, std::vector<const char *>{}};
         result.first.reserve(std::ranges::size(arguments) + 1);
         result.second.reserve(std::ranges::size(arguments) + 1);
+        result.first.push_back(exec.string());
         std::ranges::copy(
             arguments | std::views::transform([]<typename T>(const T& dt) {
                 if constexpr (std::same_as<std::string, T>) {
                     return dt;
-                } else {
+                } else if constexpr (std::constructible_from<std::string, T>){
                     return std::string{dt};
                 }
             }),
-            std::back_insert_iterator(result.second));
+            std::back_insert_iterator(result.first));
         std::ranges::copy(
             result.first | std::views::transform([](const auto& arg) { return arg.data(); }),
             std::back_insert_iterator(result.second));
