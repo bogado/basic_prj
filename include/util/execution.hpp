@@ -171,8 +171,14 @@ private:
         result.first.reserve(std::ranges::size(arguments) + 1);
         result.second.reserve(std::ranges::size(arguments) + 1);
         std::ranges::copy(
-            arguments | std::views::transform([](const auto& dt) { return dt.c_str(); }),
-            std::back_insert_iterator(result.first));
+            arguments | std::views::transform([]<typename T>(const T& dt) {
+                if constexpr (std::same_as<std::string, T>) {
+                    return dt;
+                } else {
+                    return std::string{dt};
+                }
+            }),
+            std::back_insert_iterator(result.second));
         std::ranges::copy(
             result.first | std::views::transform([](const auto& arg) { return arg.data(); }),
             std::back_insert_iterator(result.second));
