@@ -13,6 +13,7 @@
 #include <string_view>
 #include <tuple>
 #include <utility>
+#include <algorithm>
 
 namespace vb::opt {
 using namespace std::literals;
@@ -28,6 +29,20 @@ auto default_builder() -> VALUE_T
 template<typename VALUE_T, char SEPARATOR = '='>
 struct basic_option : description::basic
 {
+private:
+    constexpr auto split(std::string_view str) const {
+        if (str.starts_with(key_prefix())) {
+            auto pos = str.find(SEPARATOR);
+            if (pos == str.npos) {
+                return std::pair{str, std::string_view{}};
+            }
+            return std::pair{str.substr(0, pos), str.substr(pos+1)};
+        } else {
+            return std::pair{str.substr(0, 2), str.substr(2)};
+        }
+    }
+
+public:
     using base_value_type = VALUE_T;
     static constexpr auto separator = SEPARATOR;
     static constexpr auto has_default = std::same_as<bool, base_value_type>;
@@ -42,12 +57,10 @@ struct basic_option : description::basic
 
     constexpr auto parse(std::string_view str) const -> value_type
     {
-        if constexpr (std::same_as<bool, base_value_type>) {
-            return *this == str;
-        }
-        if constexpr (parseable<base_value_type>) {
-            if (*this == str) {
-                auto value = str.substr(str.find(separator));
+        if constexpr (auto [key, value] = split(str); std::same_as<bool, base_value_type>) {
+            return *this == key;
+        } else if constexpr (parseable<base_value_type>) {
+            if (*this == key) {
                 if (!value.empty()) {
                     return from_string<base_value_type>(value);
                 }
