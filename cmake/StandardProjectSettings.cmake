@@ -48,8 +48,8 @@ if(ENABLE_IPO)
 endif()
 
 function(setup_target target type)
-    set_project_warnings(${target} ${type})
     if(NOT type STREQUAL "INTERFACE")
+        set_project_warnings(${target} ${type})
         enable_sanitizers(${target})
     endif()
     set_target_properties(${target} PROPERTIES
