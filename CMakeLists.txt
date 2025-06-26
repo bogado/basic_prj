@@ -48,6 +48,7 @@ target_sources(basic_utils
         BASE_DIRS
             include
         FILES
+            include/util/arguments.hpp
             include/util/arrays.hpp
             include/util/bounded_array.hpp
             include/util/buffer.hpp
@@ -58,6 +59,10 @@ target_sources(basic_utils
             include/util/expected.hpp
             include/util/filesystem.hpp
             include/util/generator.hpp
+            include/util/option/concepts.hpp
+            include/util/option/description.hpp
+            include/util/option/group.hpp
+            include/util/optional.hpp
             include/util/options.hpp
             include/util/pipe.hpp
             include/util/preferences.hpp
