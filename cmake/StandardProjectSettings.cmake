@@ -12,22 +12,20 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
                                                "MinSizeRel" "RelWithDebInfo")
 endif()
 
-function(enable_clang_features target)
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        option(USE_LIBCXX_STDLIB "Use libc++ instead of libstdc++" on)
-        if (USE_LIBCXX_STDLIB)
-            add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
-            target_compile_options(basic_options INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
-            add_link_options(-stdlib=libc++)
-            target_link_options(${target} INTERFACE -stdlib=libc++)
-        endif()
-
-        option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" off)
-        if (ENABLE_BUILD_WITH_TIME_TRACE)
-            target_compile_options(${target} INTERFACE -ftime-trace)
-        endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    option(USE_LIBCXX_STDLIB "Use libc++ instead of libstdc++" on)
+    if (USE_LIBCXX_STDLIB)
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
+        target_compile_options(basic_options INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
+        add_link_options(-stdlib=libc++)
+        target_link_options(${target} INTERFACE -stdlib=libc++)
     endif()
-endfunction()
+
+    option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" off)
+    if (ENABLE_BUILD_WITH_TIME_TRACE)
+        target_compile_options(${target} INTERFACE -ftime-trace)
+    endif()
+endif()
 
 # Generate compile_commands.json to make it easier to work with clang based
 # tools
@@ -48,10 +46,8 @@ if(ENABLE_IPO)
 endif()
 
 function(setup_target target type)
-    if(NOT type STREQUAL "INTERFACE")
-        set_project_warnings(${target} ${type})
-        enable_sanitizers(${target})
-    endif()
+    set_project_warnings(${target} ${type})
+    enable_sanitizers(${target} ${type})
     set_target_properties(${target} PROPERTIES
         CMAKE_CXX_STANDARD 23
         CMAKE_CXX_EXTENSIONS False)
