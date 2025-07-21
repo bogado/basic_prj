@@ -50,7 +50,7 @@ TEST_CASE("environment_test", "[environment]")
     REQUIRE(env_test.get("check").value().value_str() == "32");
 }
 
-TEST_CASE("enviroment_defintions", "[environment,definition]")
+TEST_CASE("enviroment_defintions", "[environment][definition]")
 {
     env::environment env_test{};
     auto             env = env_test.getEnv();
@@ -63,6 +63,14 @@ TEST_CASE("enviroment_defintions", "[environment,definition]")
 
     REQUIRE(env.size() == 2);
     REQUIRE_THAT(env, Catch::Matchers::VectorContains("USER=me"s));
+}
+
+static_assert(vb::formatable<vb::env::environment>);
+
+TEST_CASE("Environment_formatter", "[environment][formatter]") {
+    env::environment env_test{};
+    env_test.set("TEST") = "1";
+    REQUIRE(std::format("{}", env_test) == "TEST=1");
 }
 
 }

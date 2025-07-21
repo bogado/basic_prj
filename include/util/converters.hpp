@@ -22,6 +22,16 @@ concept can_be_outstreamed = requires(std::ostream& out, VALUE_T val) {
     { out << val } -> std::same_as<std::ostream&>;
 };
 
+template<typename VALUE_T>
+concept has_to_string = requires(const VALUE_T value) {
+    { value.to_string() } -> std::same_as<std::string>;
+};
+
+template<typename VALUE_T>
+concept has_toString = requires(const VALUE_T value) {
+    { value.toString() } -> std::same_as<std::string>;
+};
+
 template<can_be_outstreamed VALUE_T>
 auto to_string(const VALUE_T& value) -> std::string
 {
@@ -33,6 +43,18 @@ auto to_string(const VALUE_T& value) -> std::string
     std::stringstream out{};
     out << value;
     return out.str();
+}
+
+template<has_to_string VALUE_T>
+auto to_string(const VALUE_T& value) -> std::string
+{
+    return value.to_string();
+}
+
+template<has_toString VALUE_T>
+auto to_string(const VALUE_T& value) -> std::string
+{
+    return value.toString();
 }
 
 template<can_be_istreamed PARSEABLE>
