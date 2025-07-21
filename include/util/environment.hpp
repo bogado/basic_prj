@@ -33,6 +33,7 @@ struct variable_name
     using size_type                 = std::size_t;
 
 private:
+
     std::variant<std::string, const char *> storage;
     size_type                               end_location{};
 
@@ -65,6 +66,7 @@ private:
     explicit variable_name(const variable& other);
 
 public:
+
     std::string raw_string() const
     {
         return std::visit([](auto value) { return std::string(value); }, storage);
@@ -89,9 +91,15 @@ public:
     {
     }
 
-    constexpr std::string_view name() const { return raw_view().substr(0, end_location); }
+    constexpr std::string_view name() const
+    {
+        return raw_view().substr(0, end_location);
+    }
 
-    constexpr std::string to_string() const noexcept { return std::string{ name() }; }
+    constexpr std::string to_string() const noexcept
+    {
+        return std::string{ name() };
+    }
 
     constexpr std::optional<std::string> value_from_system() const noexcept
     {
@@ -130,7 +138,10 @@ public:
         }
     }
 
-    constexpr friend bool operator==(const variable_name& a, const variable_name& b) { return a.name() == b.name(); }
+    constexpr friend bool operator==(const variable_name& a, const variable_name& b)
+    {
+        return a.name() == b.name();
+    }
 
     constexpr friend bool operator!=(const variable_name& a, const variable_name& b) = default;
 };
@@ -142,14 +153,19 @@ struct variable
     using optional = std::optional<variable>;
 
 private:
+
     std::string            definition;
     std::string::size_type var_value;
 
     friend environment;
 
-    constexpr auto value_pos() const { return var_value + 1; }
+    constexpr auto value_pos() const
+    {
+        return var_value + 1;
+    }
 
 public:
+
     variable(variable_name name, std::string_view val) noexcept
         : definition{ name.raw_string() + SEPARATOR + std::string(val) }
         , var_value{ definition.find(SEPARATOR) }
@@ -171,11 +187,20 @@ public:
         }
     }
 
-    variable_name name() const { return variable_name{ definition }; }
+    variable_name name() const
+    {
+        return variable_name{ definition };
+    }
 
-    const char *data() const { return definition.data(); }
+    const char *data() const
+    {
+        return definition.data();
+    }
 
-    void set(std::string new_value) { definition.replace(value_pos(), definition.size(), new_value); }
+    void set(std::string new_value)
+    {
+        definition.replace(value_pos(), definition.size(), new_value);
+    }
 
     template<parseable VALUE_T = std::string_view>
     auto value() const
@@ -183,11 +208,20 @@ public:
         return from_string<VALUE_T>(value_str());
     }
 
-    bool has_value() { return definition.size() != value_pos(); }
+    bool has_value()
+    {
+        return definition.size() != value_pos();
+    }
 
-    std::string value_str() const { return definition.substr(value_pos()); }
+    std::string value_str() const
+    {
+        return definition.substr(value_pos());
+    }
 
-    bool is_sync() const { return name().value_from_system() == value_str(); }
+    bool is_sync() const
+    {
+        return name().value_from_system() == value_str();
+    }
 
     void update_system() const
     {
@@ -199,9 +233,15 @@ public:
         }
     }
 
-    auto definition_view() const { return std::string_view{ definition }; }
+    auto definition_view() const
+    {
+        return std::string_view{ definition };
+    }
 
-    auto to_string() const -> std::string { return definition; }
+    auto to_string() const -> std::string
+    {
+        return definition;
+    }
 
     static variable from_system(variable_name name)
     {
@@ -212,13 +252,25 @@ public:
         }
     }
 
-    static variable from_system(is_string_class auto name) { return from_system(variable_name{ name }); }
+    static variable from_system(is_string_class auto name)
+    {
+        return from_system(variable_name{ name });
+    }
 
-    static variable from_system(const char *name) { return from_system(variable_name{ name }); }
+    static variable from_system(const char *name)
+    {
+        return from_system(variable_name{ name });
+    }
 
-    friend bool operator==(const variable& me, const variable_name& name) { return me.name() == name; }
+    friend bool operator==(const variable& me, const variable_name& name)
+    {
+        return me.name() == name;
+    }
 
-    friend bool operator==(const variable_name& name, const variable& me) { return me == name; }
+    friend bool operator==(const variable_name& name, const variable& me)
+    {
+        return me == name;
+    }
 };
 
 inline variable_name::variable_name(const variable& var)
@@ -228,8 +280,7 @@ inline variable_name::variable_name(const variable& var)
 }
 
 namespace literals {
-consteval auto
-operator""_env(const char *name, std::size_t size)
+consteval auto operator""_env(const char *name, std::size_t size)
 {
     return variable_name{ name, size };
 }
@@ -248,6 +299,7 @@ struct environment
     using optional = std::optional<environment>;
 
 private:
+
     static bool compare_names(const variable& a, const variable& b)
     {
         return a.name().raw_string() < b.name().raw_string();
@@ -255,7 +307,10 @@ private:
 
     std::vector<variable> definitions{};
 
-    static auto grab_data(variable& var) { return var.definition.data(); }
+    static auto grab_data(variable& var)
+    {
+        return var.definition.data();
+    }
 
     struct mod
     {
@@ -281,6 +336,7 @@ private:
     }
 
 public:
+
     environment() = default;
 
     auto getEnv() const
@@ -322,11 +378,28 @@ public:
         }
     }
 
-    bool contains(std::string name) const { return lookup_name(std::string{ name }) != definitions.end(); }
+    bool contains(std::string name) const
+    {
+        return lookup_name(std::string{ name }) != definitions.end();
+    }
 
-    auto set(std::string_view name) { return mod{ *this, name }; }
+    auto set(std::string_view name)
+    {
+        return mod{ *this, name };
+    }
 
-    auto size() const { return definitions.size(); }
+    auto size() const
+    {
+        return definitions.size();
+    }
+
+    std::string to_string() const
+    {
+        return std::ranges::to<std::string>(std::views::join_with(
+            definitions | std::views::all |
+                std::views::transform([](const auto& variable) { return variable.to_string(); }),
+            ", "s));
+    }
 };
 
 }

@@ -63,6 +63,9 @@ concept stringable = requires(const STRINGABLE value) {
     { ::vb::to_string(value) } -> std::same_as<std::string>;
 };
 
+template<typename FORMATABLE>
+concept formatable = stringable<FORMATABLE> && std::is_class_v<FORMATABLE>;
+
 namespace static_test {
 static_assert(parseable<int>);
 static_assert(stringable<int>);
@@ -78,5 +81,23 @@ static_assert(stringable<std::string_view>);
 }
 
 }
+
+template<vb::formatable TYPE>
+struct std::formatter<TYPE, char>
+{
+    template<class PARSE_CONTEXT>
+    constexpr PARSE_CONTEXT::iterator parse(PARSE_CONTEXT& context)
+    {
+        return context.begin();
+    }
+
+    template<class FORMAT_CONTEXT>
+    constexpr FORMAT_CONTEXT::iterator format(const TYPE& value, FORMAT_CONTEXT& context) const
+    {
+        auto out = std::ranges::copy(vb::to_string(value), context.out()).out;
+
+        return out;
+    }
+};
 
 #endif
