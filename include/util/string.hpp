@@ -1,6 +1,8 @@
 #ifndef STRING_HPP_INCLUDED
 #define STRING_HPP_INCLUDED
 
+#include "concepts_helpers.hpp"
+
 #include <algorithm>
 #include <array>
 #include <concepts>
@@ -15,8 +17,8 @@ namespace vb {
 
 template<typename STRING_TYPE>
 concept is_string_type =
-    std::same_as<std::char_traits<typename STRING_TYPE::value_type>, typename STRING_TYPE::traits_type> ||
-    std::is_array_v<STRING_TYPE> || std::same_as<STRING_TYPE, const char *>;
+    static_same_as<std::char_traits<typename STRING_TYPE::value_type>, typename STRING_TYPE::traits_type> ||
+    std::is_array_v<STRING_TYPE> || static_same_as<STRING_TYPE, const char *>;
 
 // NOLINTBEGIN modernize-avoid-c-arrays
 template<std::size_t LENGTH, typename VALUE_T = char, typename TRAITS = std::char_traits<VALUE_T>>
@@ -148,11 +150,11 @@ static_assert(test2.view() == test3.substr(0, 3));
 } // namespace literals
 
 template<typename CHAR>
-concept is_char = std::same_as<char, std::remove_cv_t<CHAR>> || std::same_as<char8_t, std::remove_cv_t<CHAR>> ||
-                  std::same_as<char16_t, std::remove_cv_t<CHAR>> || std::same_as<char32_t, std::remove_cv_t<CHAR>>;
+concept is_char = static_same_as<char, std::remove_cv_t<CHAR>> || static_same_as<char8_t, std::remove_cv_t<CHAR>> ||
+                  static_same_as<char16_t, std::remove_cv_t<CHAR>> || static_same_as<char32_t, std::remove_cv_t<CHAR>>;
 
 template<typename STRING>
-concept is_string_class = std::same_as<typename STRING::traits_type::char_type, typename STRING::value_type>;
+concept is_string_class = static_same_as<typename STRING::traits_type::char_type, typename STRING::value_type>;
 
 template<typename STRING>
 concept is_array_string = std::is_array_v<STRING> && is_char<std::remove_all_extents_t<STRING>>;

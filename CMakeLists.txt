@@ -53,6 +53,7 @@ target_sources(basic_utils
             include/util/bounded_array.hpp
             include/util/buffer.hpp
             include/util/converters.hpp
+            include/util/concept_helper.hpp
             include/util/debug.hpp
             include/util/environment.hpp
             include/util/execution.hpp
