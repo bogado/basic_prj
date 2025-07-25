@@ -115,11 +115,8 @@ public:
     constexpr RESULT_T value_or(const RESULT_T& default_value) const noexcept
     {
         auto opt_value = value_from_system();
-        if (!opt_value.has_value()) {
-            return {};
-        }
         if constexpr (std::same_as<RESULT_T, std::string>) {
-            return opt_value;
+            return opt_value.has_value() ? opt_value.value() : default_value;
         } else {
             if (opt_value.has_value()) {
                 return { from_string<RESULT_T>(opt_value.value()) };
