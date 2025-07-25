@@ -1,7 +1,7 @@
 #ifndef STRING_HPP_INCLUDED
 #define STRING_HPP_INCLUDED
 
-#include "concepts_helpers.hpp"
+#include "./concept_helper.hpp"
 
 #include <algorithm>
 #include <array>
@@ -150,22 +150,22 @@ static_assert(test2.view() == test3.substr(0, 3));
 } // namespace literals
 
 template<typename CHAR>
-concept is_char = static_same_as<char, std::remove_cv_t<CHAR>> || static_same_as<char8_t, std::remove_cv_t<CHAR>> ||
-                  static_same_as<char16_t, std::remove_cv_t<CHAR>> || static_same_as<char32_t, std::remove_cv_t<CHAR>>;
+concept is_char = std::same_as<char, std::remove_cv_t<CHAR>> || std::same_as<char8_t, std::remove_cv_t<CHAR>> ||
+                  std::same_as<char16_t, std::remove_cv_t<CHAR>> || std::same_as<char32_t, std::remove_cv_t<CHAR>>;
 
 template<typename STRING>
-concept is_string_class = static_same_as<typename STRING::traits_type::char_type, typename STRING::value_type>;
+concept is_string_class = std::same_as<typename STRING::traits_type::char_type, typename STRING::value_type>;
 
 template<typename STRING>
-concept is_array_string = std::is_array_v<STRING> && is_char<std::remove_all_extents_t<STRING>>;
+concept is_c_array_string = std::is_array_v<STRING> && is_char<std::remove_all_extents_t<STRING>>;
 
-static_assert(is_array_string<char[3]>); // NOLINT(cppcoreguidelines-avoid-c-arrays)
+static_assert(is_c_array_string<char[3]>); // NOLINT(cppcoreguidelines-avoid-c-arrays)
 
 template<typename STRING>
 concept is_pointer_string = std::is_pointer_v<STRING> && is_char<std::remove_pointer_t<STRING>>;
 
 template<typename STRING>
-concept is_string = is_string_class<STRING> || is_array_string<STRING> || is_pointer_string<STRING>;
+concept is_string = is_string_class<std::remove_cvref_t<STRING>> || is_c_array_string<std::remove_cvref_t<STRING>> || is_pointer_string<std::remove_cvref_t<STRING>>;
 
 static_assert(!is_string<int>);
 
